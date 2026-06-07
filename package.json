@@ -1,0 +1,26 @@
+{
+  "name": "agnes-image-studio",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI 图像生成项目：文生图、图生图、多图合成（对接 Agnes Image 2.0 Flash）",
+  "scripts": {
+    "dev": "concurrently -n server,web -c green,cyan \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "node --watch server/index.js",
+    "dev:web": "npm --prefix web run dev",
+    "start": "node app.js",
+    "build": "npm run build:web && npm run sync:public",
+    "build:web": "npm --prefix web run build",
+    "sync:public": "node scripts/sync-public.js",
+    "install:all": "npm install && npm --prefix web install"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1"
+  }
+}

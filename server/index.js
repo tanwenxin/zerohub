@@ -1,0 +1,62 @@
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+const express = require('express');
+const cors = require('cors');
+
+const config = require('./config');
+const imagesRouter = require('./routes/images');
+const videosRouter = require('./routes/videos');
+const logger = require('./services/logger');
+
+const app = express();
+const publicDir = path.resolve(__dirname, '..', 'public');
+const publicIndex = path.join(publicDir, 'index.html');
+
+app.use(cors());
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
+
+// HTTP 访问日志（跳过高频轮询的 GET /api/tasks 与健康检查，避免日志噪音）
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    const isPolling = req.method === 'GET' && /^\/tasks\//.test(req.path.replace('/api', ''));
+    const isHealth = req.path === '/api/health';
+    if (!isPolling && !isHealth) {
+      logger.info('http.access', { method: req.method, path: req.path });
+    }
+  }
+  next();
+});
+
+app.use('/api', imagesRouter);
+app.use('/api', videosRouter);
+
+// 生产同域部署：Serv00 会优先处理 public/ 静态文件；这里保留本地/代理部署兜底。
+app.use(express.static(publicDir));
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  if (!fs.existsSync(publicIndex)) return next();
+  return res.sendFile(publicIndex);
+});
+
+// 兜底错误处理
+app.use((err, req, res, next) => {
+  logger.error('server.error', { message: err.message, path: req.path });
+  res.status(err.status || 500).json({ error: err.message || '服务器内部错误' });
+});
+
+app.listen(config.port, () => {
+  console.log(`\nAgnes Image Studio 后端已启动`);
+  console.log(`  地址: http://localhost:${config.port}`);
+  console.log(`  模型: ${config.agnes.model}`);
+  console.log(`  API Key: ${config.isApiKeyConfigured ? '已配置' : '⚠️ 未配置（请在 server/.env 填写 AGNES_API_KEY）'}`);
+  console.log(`  队列: 并发=${config.queue.maxConcurrency} 间隔=${config.queue.minIntervalMs}ms 重试=${config.queue.maxRetries}`);
+  console.log(`  日志目录: ${logger.logDir}\n`);
+  logger.info('server.started', {
+    port: config.port,
+    model: config.agnes.model,
+    maxConcurrency: config.queue.maxConcurrency,
+  });
+});
