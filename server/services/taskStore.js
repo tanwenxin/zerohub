@@ -128,6 +128,14 @@ class TaskStore {
     if (copy.result && Array.isArray(copy.result.images)) {
       copy.result = {
         ...copy.result,
+        data: Array.isArray(copy.result.data)
+          ? copy.result.data.map((img) => ({
+              url: normalizePublicUrl(img && img.url),
+              // base64 体积过大，不落盘
+              b64_json: null,
+              revised_prompt: img && img.revised_prompt ? img.revised_prompt : null,
+            }))
+          : copy.result.data,
         images: copy.result.images.map((img) => ({
           url: normalizePublicUrl(img.url),
           // base64 体积过大，不落盘
@@ -143,6 +151,12 @@ class TaskStore {
     if (task.result && Array.isArray(task.result.images)) {
       task.result = {
         ...task.result,
+        data: Array.isArray(task.result.data)
+          ? task.result.data.map((img) => ({
+              ...img,
+              url: normalizePublicUrl(img && img.url),
+            }))
+          : task.result.data,
         images: task.result.images.map((img) => ({
           ...img,
           url: normalizePublicUrl(img && img.url),

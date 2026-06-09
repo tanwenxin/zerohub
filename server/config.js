@@ -41,7 +41,7 @@ const config = {
     apiKey: apiKeys[0] || '',
     baseUrl: process.env.AGNES_BASE_URL || 'https://apihub.agnes-ai.com',
     endpoint: process.env.AGNES_ENDPOINT || '/v1/images/generations',
-    model: process.env.AGNES_MODEL || 'agnes-image-2.0-flash',
+    model: process.env.AGNES_MODEL || 'agnes-image-2.1-flash',
     requestTimeoutMs: int('REQUEST_TIMEOUT_MS', 300000),
     // 本地无 Key 时的模拟模式（仅用于联调验证流程）
     mock: process.env.AGNES_MOCK === '1',

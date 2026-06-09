@@ -154,6 +154,10 @@ export function ImageGenerate() {
     <div className="page">
       <div className="panel">
         <h2>{t('page.image.title')}</h2>
+        <section className="landing-intro" aria-label={t('imageLanding.title')}>
+          <p className="eyebrow">{t('imageLanding.title')}</p>
+          <p>{t('imageLanding.body')}</p>
+        </section>
 
         <label className="field">
           <span>{t('image.mode')}</span>
@@ -169,13 +173,16 @@ export function ImageGenerate() {
         <p className="desc">{t(descKey)}</p>
 
         {needsImage && (
-          <Uploader
-            files={files}
-            urls={urls}
-            onFilesChange={setFiles}
-            onUrlsChange={setUrls}
-            maxItems={mode === 'img2img' ? 1 : 8}
-          />
+          <>
+            <p className="compliance-inline">{t('imageLanding.uploadNotice')}</p>
+            <Uploader
+              files={files}
+              urls={urls}
+              onFilesChange={setFiles}
+              onUrlsChange={setUrls}
+              maxItems={mode === 'img2img' ? 1 : 8}
+            />
+          </>
         )}
 
         <PromptForm
@@ -200,6 +207,15 @@ export function ImageGenerate() {
           {buttonLabel}
         </button>
         <SubmitFeedback visible={accepted} message={t('tasks.acceptedHint')} />
+
+        <section className="landing-faq">
+          <h3>{t('imageLanding.faqTitle')}</h3>
+          <p>{t('imageLanding.faqModes')}</p>
+          <p>{t('imageLanding.faqRights')}</p>
+          <p>
+            <a href="/privacy">{t('imageLanding.faqPrivacy')}</a>
+          </p>
+        </section>
       </div>
 
       <div className="panel output">

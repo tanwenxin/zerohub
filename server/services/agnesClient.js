@@ -5,12 +5,13 @@ const config = require('../config');
 const { normalizePublicUrl } = require('../utils/url');
 
 /**
- * Agnes Image 2.0 Flash 接口封装。
+ * Agnes Image 2.1 Flash 接口封装。
  * 严格遵循接口文档：
  * - 文生图：不传 image
  * - 图生图/多图：传顶层 image 数组；不传 tags
  * - response_format 必须放在 extra_body（放顶层会 400）
- * - 输出统一请求 url；如需 base64 可设置 b64_json
+ * - 文生图 Base64 使用顶层 return_base64: true
+ * - 图生图 Base64 使用 extra_body.response_format = b64_json
  */
 
 const http = axios.create({
@@ -78,8 +79,12 @@ function buildRequestBody({ type, prompt, size, image, responseFormat = 'url' })
   };
   if (size) body.size = size;
 
-  // extra_body 承载 response_format（文档强约束）
-  body.extra_body = { response_format: responseFormat };
+  if (type === 'text2img' && responseFormat === 'b64_json') {
+    body.return_base64 = true;
+  } else {
+    // response_format 放在 extra_body，避免顶层 response_format 触发上游 400。
+    body.extra_body = { response_format: responseFormat };
+  }
 
   if (type !== 'text2img') {
     // 图生图 / 多图：顶层 image 数组；不传 tags
@@ -160,12 +165,18 @@ function normalizeError(err) {
 /** 解析响应为统一结构 */
 function parseResponse(data) {
   const items = Array.isArray(data && data.data) ? data.data : [];
+  const normalizedData = items.map((it) => ({
+    url: normalizePublicUrl(it.url),
+    b64_json: it.b64_json || null,
+    revised_prompt: it.revised_prompt || null,
+  }));
   return {
     created: data && data.created,
-    images: items.map((it) => ({
-      url: normalizePublicUrl(it.url),
-      b64: it.b64_json || null,
-      revisedPrompt: it.revised_prompt || null,
+    data: normalizedData,
+    images: normalizedData.map((it) => ({
+      url: it.url,
+      b64: it.b64_json,
+      revisedPrompt: it.revised_prompt,
     })),
   };
 }
@@ -232,4 +243,4 @@ async function generate(input, opts = {}) {
   }
 }
 
-module.exports = { generate, buildRequestBody, normalizeSize };
+module.exports = { generate, buildRequestBody, normalizeSize, parseResponse };

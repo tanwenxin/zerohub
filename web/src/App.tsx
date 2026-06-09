@@ -1,30 +1,83 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { MouseEvent } from 'react';
 import './App.css';
 import { ImageGenerate } from './pages/ImageGenerate';
 import { VideoGenerate } from './pages/VideoGenerate';
+import { HomePage } from './pages/HomePage';
+import { PrivacyPage } from './pages/PrivacyPage';
+import { TermsPage } from './pages/TermsPage';
+import { ContactPage } from './pages/ContactPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { getHealth, type Health } from './api/client';
 import { ensurePermission, getPermission } from './utils/notify';
 import { usePreferences } from './usePreferences';
 import { useTaskQueue } from './useTaskQueue';
 import { TasksDrawer } from './components/TasksDrawer';
+import { SiteFooter } from './components/SiteFooter';
 import { LANGUAGES, THEMES } from './theme';
 import type { TranslationKey } from './i18n';
+import { useDocumentMeta } from './hooks/useDocumentMeta';
 
-type Tab = 'image' | 'video';
+type RouteKey = 'home' | 'image' | 'video' | 'privacy' | 'terms' | 'contact' | 'notFound';
 
-const TABS: { key: Tab; labelKey: TranslationKey }[] = [
-  { key: 'image', labelKey: 'nav.image' },
-  { key: 'video', labelKey: 'nav.video' },
+const NAV_ITEMS: { path: string; labelKey: TranslationKey; route: RouteKey }[] = [
+  { path: '/', labelKey: 'nav.home', route: 'home' },
+  { path: '/image', labelKey: 'nav.image', route: 'image' },
+  { path: '/video', labelKey: 'nav.video', route: 'video' },
 ];
+
+function normalizePath(pathname: string): string {
+  const path = pathname.replace(/\/+$/, '') || '/';
+  return path;
+}
+
+function routeFromPath(pathname: string): RouteKey {
+  switch (normalizePath(pathname)) {
+    case '/':
+      return 'home';
+    case '/image':
+      return 'image';
+    case '/video':
+      return 'video';
+    case '/privacy':
+      return 'privacy';
+    case '/terms':
+      return 'terms';
+    case '/contact':
+      return 'contact';
+    default:
+      return 'notFound';
+  }
+}
 
 export default function App() {
   const { language, setLanguage, theme, setTheme, t } = usePreferences();
   const { activeCount, maxActive } = useTaskQueue();
-  const [tab, setTab] = useState<Tab>('image');
+  const [path, setPath] = useState(() => normalizePath(window.location.pathname));
   const [health, setHealth] = useState<Health | null>(null);
   const [perm, setPerm] = useState<NotificationPermission | 'unsupported'>(getPermission());
   const [controlsOpen, setControlsOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const route = routeFromPath(path);
+
+  const meta = useMemo(() => {
+    const byRoute: Record<RouteKey, { titleKey: TranslationKey; descriptionKey: TranslationKey }> = {
+      home: { titleKey: 'meta.home.title', descriptionKey: 'meta.home.description' },
+      image: { titleKey: 'meta.image.title', descriptionKey: 'meta.image.description' },
+      video: { titleKey: 'meta.video.title', descriptionKey: 'meta.video.description' },
+      privacy: { titleKey: 'meta.privacy.title', descriptionKey: 'meta.privacy.description' },
+      terms: { titleKey: 'meta.terms.title', descriptionKey: 'meta.terms.description' },
+      contact: { titleKey: 'meta.contact.title', descriptionKey: 'meta.contact.description' },
+      notFound: { titleKey: 'meta.notFound.title', descriptionKey: 'meta.notFound.description' },
+    };
+    const selected = byRoute[route];
+    return {
+      title: t(selected.titleKey),
+      description: t(selected.descriptionKey),
+    };
+  }, [route, t]);
+
+  useDocumentMeta(meta);
 
   useEffect(() => {
     const load = () => getHealth().then(setHealth).catch(() => setHealth(null));
@@ -33,6 +86,27 @@ export default function App() {
     const id = window.setInterval(load, 5000);
     return () => window.clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    const onPopState = () => setPath(normalizePath(window.location.pathname));
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  function navigate(nextPath: string) {
+    const normalized = normalizePath(nextPath);
+    if (normalized !== path) {
+      window.history.pushState(null, '', normalized);
+      setPath(normalized);
+    }
+    setControlsOpen(false);
+  }
+
+  function onRouteClick(e: MouseEvent<HTMLAnchorElement>, nextPath: string) {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    navigate(nextPath);
+  }
 
   async function onEnableNotify() {
     const p = await ensurePermission();
@@ -48,27 +122,42 @@ export default function App() {
       ? t('notify.unsupported')
       : t('notify.enable');
 
+  const page =
+    route === 'home' ? (
+      <HomePage />
+    ) : route === 'image' ? (
+      <ImageGenerate />
+    ) : route === 'video' ? (
+      <VideoGenerate />
+    ) : route === 'privacy' ? (
+      <PrivacyPage />
+    ) : route === 'terms' ? (
+      <TermsPage />
+    ) : route === 'contact' ? (
+      <ContactPage />
+    ) : (
+      <NotFoundPage />
+    );
+
   return (
     <div className="app">
       <header className="topbar">
         <div className="topbar-main">
-          <div className="brand">
+          <a className="brand" href="/" onClick={(e) => onRouteClick(e, '/')}>
             <span className="logo">✦</span>
             {t('app.brand')}
-          </div>
+          </a>
           <div className="topbar-nav-row">
             <nav className="tabs" aria-label="Primary">
-              {TABS.map((tabItem) => (
-                <button
-                  key={tabItem.key}
-                  className={`tab ${tab === tabItem.key ? 'active' : ''}`}
-                  onClick={() => {
-                    setTab(tabItem.key);
-                    setControlsOpen(false);
-                  }}
+              {NAV_ITEMS.map((item) => (
+                <a
+                  key={item.path}
+                  href={item.path}
+                  className={`tab ${route === item.route ? 'active' : ''}`}
+                  onClick={(e) => onRouteClick(e, item.path)}
                 >
-                  {t(tabItem.labelKey)}
-                </button>
+                  {t(item.labelKey)}
+                </a>
               ))}
             </nav>
             <button
@@ -166,10 +255,9 @@ export default function App() {
         </div>
       </header>
 
-      <main>
-        {tab === 'image' && <ImageGenerate />}
-        {tab === 'video' && <VideoGenerate />}
-      </main>
+      <main>{page}</main>
+
+      <SiteFooter />
 
       <TasksDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>

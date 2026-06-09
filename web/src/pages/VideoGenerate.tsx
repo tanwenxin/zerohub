@@ -201,6 +201,11 @@ export function VideoGenerate() {
     <div className="page">
       <div className="panel">
         <h2>{t('page.video.title')}</h2>
+        <section className="landing-intro" aria-label={t('videoLanding.title')}>
+          <p className="eyebrow">{t('videoLanding.title')}</p>
+          <p>{t('videoLanding.body')}</p>
+          <p>{t('videoLanding.disclosure')}</p>
+        </section>
         <p className="desc">{t('page.video.desc')}</p>
 
         <label className="field">
@@ -217,6 +222,7 @@ export function VideoGenerate() {
         {needsImage && (
           <>
             <p className="hint">{t(uploadHintKey)}</p>
+            <p className="compliance-inline">{t('videoLanding.uploadNotice')}</p>
             <Uploader
               files={files}
               urls={urls}
@@ -307,6 +313,15 @@ export function VideoGenerate() {
           {buttonLabel}
         </button>
         <SubmitFeedback visible={accepted} message={t('tasks.acceptedHint')} />
+
+        <section className="landing-faq">
+          <h3>{t('videoLanding.faqTitle')}</h3>
+          <p>{t('videoLanding.faqModes')}</p>
+          <p>{t('videoLanding.faqTiming')}</p>
+          <p>
+            <a href="/privacy">{t('nav.privacy')}</a>
+          </p>
+        </section>
       </div>
 
       <div className="panel output">
