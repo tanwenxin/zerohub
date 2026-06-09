@@ -1,12 +1,18 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
 import {
-  listTasks,
+  getTask,
   refreshTask,
-  deleteTask,
   downloadUrl,
   videoDownloadUrl,
   type Task,
 } from '../api/client';
+import {
+  LOCAL_HISTORY_UPDATED_EVENT,
+  readLocalHistory,
+  refreshActiveLocalHistory,
+  removeLocalHistory,
+  upsertLocalHistory,
+} from '../utils/localHistory';
 import { MediaPreviewModal, type PreviewMedia } from './MediaPreviewModal';
 import {
   HistoryToolbar,
@@ -137,9 +143,9 @@ interface Props {
 }
 
 /**
- * 任务历史列表（后端持久化驱动）：
- * - 展示所有任务（进行中/已完成/失败）；
- * - 进行中任务自动轮询刷新；
+ * 任务历史列表（本地历史驱动）：
+ * - 仅展示当前浏览器 localStorage 中记录过的任务；
+ * - 进行中任务按本地 task id 自动轮询刷新；
  * - 图片失败任务提供「刷新」按钮，重新查询或重新发起。
  */
 export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPromptFill, onFill }: Props) {
@@ -159,8 +165,12 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
 
   const load = useCallback(async () => {
     try {
-      const list = await listTasks(category, 100);
-      setTasks(list);
+      const localTasks = readLocalHistory(category, 100);
+      setTasks(localTasks);
+      setLoading(false);
+      if (localTasks.some((t) => ACTIVE_STATUSES.includes(t.status))) {
+        setTasks(await refreshActiveLocalHistory(category, getTask));
+      }
     } catch {
       /* 忽略瞬时错误，下次轮询重试 */
     } finally {
@@ -212,6 +222,15 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
     return () => window.clearTimeout(id);
   }, [category]);
 
+  useEffect(() => {
+    const syncLocalHistory = () => {
+      setTasks(readLocalHistory(category, 100));
+      setLoading(false);
+    };
+    window.addEventListener(LOCAL_HISTORY_UPDATED_EVENT, syncLocalHistory);
+    return () => window.removeEventListener(LOCAL_HISTORY_UPDATED_EVENT, syncLocalHistory);
+  }, [category]);
+
   const visibleTasks = useMemo(() => {
     const query = deferredSearchText.trim().toLowerCase();
     return tasks
@@ -224,23 +243,21 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
     setRefreshingId(task.id);
     try {
       await refreshTask(task.id, category);
-      await load();
+      const refreshed = await getTask(task.id);
+      upsertLocalHistory(refreshed);
+      setTasks(readLocalHistory(category, 100));
     } catch (e) {
       // 刷新失败（如限流/无法重放）：提示并仍刷新列表
       alert((e as Error).message);
-      await load();
+      setTasks(readLocalHistory(category, 100));
     } finally {
       setRefreshingId(null);
     }
   }
 
-  async function onDelete(task: Task) {
-    try {
-      await deleteTask(task.id);
-      setTasks((prev) => prev.filter((x) => x.id !== task.id));
-    } catch {
-      /* noop */
-    }
+  function onDelete(task: Task) {
+    removeLocalHistory(task.id);
+    setTasks((prev) => prev.filter((x) => x.id != task.id));
   }
 
   function shouldIgnorePromptFill(target: EventTarget | null): boolean {

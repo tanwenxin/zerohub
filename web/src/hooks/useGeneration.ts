@@ -11,6 +11,7 @@ import {
 } from '../api/client';
 import { notifyTaskFinished } from '../utils/notify';
 import { translate, type Language } from '../i18n';
+import { upsertLocalHistory } from '../utils/localHistory';
 
 // 本地任务条目：包含一个标识 + 提交参数摘要 + 服务端任务状态
 export interface LocalTask {
@@ -32,7 +33,7 @@ function imageSrc(img: { url: string | null; b64: string | null }): string {
  * 多任务并行生成 hook：
  * - 同一标签页可同时提交多个任务（前端不做并发限制，交由服务端排队）
  * - 每个任务独立轮询，展示排队/生成进度
- * - 任务完成后把图像地址写入 localStorage
+ * - 轮询到服务端任务后写入本地历史 localStorage
  */
 export function useMultiGeneration(language: Language = 'zh') {
   const [tasks, setTasks] = useState<LocalTask[]>([]);
@@ -71,6 +72,7 @@ export function useMultiGeneration(language: Language = 'zh') {
       const tick = async () => {
         try {
           const t = await getTask(taskId);
+          upsertLocalHistory(t);
           updateTask(localId, { task: t, submitError: null, retrying: false });
           if (t.status === 'done' || t.status === 'error') {
             stopTimer(localId);
