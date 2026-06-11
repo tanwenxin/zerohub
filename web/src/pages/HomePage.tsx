@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { usePreferences } from '../usePreferences';
 
 export function HomePage() {
@@ -38,12 +39,12 @@ export function HomePage() {
         <h1>{t('home.title')}</h1>
         <p className="hero-copy">{t('home.subtitle')}</p>
         <div className="hero-actions">
-          <a className="btn-primary" href="/image">
+          <Link className="btn-primary" to="/image">
             {t('home.cta.image')}
-          </a>
-          <a className="btn-secondary" href="/video">
+          </Link>
+          <Link className="btn-secondary" to="/video">
             {t('home.cta.video')}
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -52,7 +53,7 @@ export function HomePage() {
           <article className="feature-card" key={feature.title}>
             <h2>{feature.title}</h2>
             <p>{feature.body}</p>
-            <a href={feature.href}>{feature.cta}</a>
+            <Link to={feature.href}>{feature.cta}</Link>
           </article>
         ))}
       </section>

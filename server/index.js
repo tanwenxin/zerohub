@@ -14,6 +14,7 @@ const logger = require('./services/logger');
 const app = express();
 const publicDir = path.resolve(__dirname, '..', 'public');
 const publicIndex = path.join(publicDir, 'index.html');
+const publicNotFound = path.join(publicDir, '404.html');
 
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
@@ -36,11 +37,14 @@ app.use('/api', videosRouter);
 app.use('/api', textRouter);
 
 // 生产同域部署：Serv00 会优先处理 public/ 静态文件；这里保留本地/代理部署兜底。
-app.use(express.static(publicDir));
+// vite-react-ssg 产出扁平化预渲染页（如 image.html），通过 extensions 让 /image 命中 image.html。
+app.use(express.static(publicDir, { extensions: ['html'] }));
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) return next();
-  if (!fs.existsSync(publicIndex)) return next();
-  return res.sendFile(publicIndex);
+  // 未命中任何预渲染页面：优先返回预渲染 404 页，缺省回退首页。
+  if (fs.existsSync(publicNotFound)) return res.status(404).sendFile(publicNotFound);
+  if (fs.existsSync(publicIndex)) return res.sendFile(publicIndex);
+  return next();
 });
 
 // 兜底错误处理

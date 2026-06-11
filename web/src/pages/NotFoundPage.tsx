@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { usePreferences } from '../usePreferences';
 
 export function NotFoundPage() {
@@ -9,15 +10,15 @@ export function NotFoundPage() {
       <h1>{t('notFound.title')}</h1>
       <p>{t('notFound.body')}</p>
       <div className="hero-actions">
-        <a className="btn-primary" href="/">
+        <Link className="btn-primary" to="/">
           {t('nav.home')}
-        </a>
-        <a className="btn-secondary" href="/image">
+        </Link>
+        <Link className="btn-secondary" to="/image">
           {t('nav.image')}
-        </a>
-        <a className="btn-secondary" href="/video">
+        </Link>
+        <Link className="btn-secondary" to="/video">
           {t('nav.video')}
-        </a>
+        </Link>
       </div>
     </section>
   );

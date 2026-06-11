@@ -1,13 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { MouseEvent } from 'react';
-import './App.css';
-import { ImageGenerate } from './pages/ImageGenerate';
-import { VideoGenerate } from './pages/VideoGenerate';
-import { HomePage } from './pages/HomePage';
-import { PrivacyPage } from './pages/PrivacyPage';
-import { TermsPage } from './pages/TermsPage';
-import { ContactPage } from './pages/ContactPage';
-import { NotFoundPage } from './pages/NotFoundPage';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { Head } from 'vite-react-ssg';
 import { getHealth, type Health } from './api/client';
 import { initializeBackgroundNotifications } from './utils/notify';
 import { usePreferences } from './usePreferences';
@@ -16,7 +9,6 @@ import { TasksDrawer } from './components/TasksDrawer';
 import { SiteFooter } from './components/SiteFooter';
 import { THEMES } from './theme';
 import type { TranslationKey } from './i18n';
-import { useDocumentMeta } from './hooks/useDocumentMeta';
 
 type RouteKey = 'home' | 'image' | 'video' | 'privacy' | 'terms' | 'contact' | 'notFound';
 
@@ -34,8 +26,7 @@ const THEME_ICON: Record<(typeof THEMES)[number], string> = {
 };
 
 function normalizePath(pathname: string): string {
-  const path = pathname.replace(/\/+$/, '') || '/';
-  return path;
+  return pathname.replace(/\/+$/, '') || '/';
 }
 
 function routeFromPath(pathname: string): RouteKey {
@@ -60,11 +51,11 @@ function routeFromPath(pathname: string): RouteKey {
 export default function App() {
   const { language, setLanguage, theme, setTheme, t } = usePreferences();
   const { activeCount, maxActive } = useTaskQueue();
-  const [path, setPath] = useState(() => normalizePath(window.location.pathname));
+  const location = useLocation();
+  const route = routeFromPath(location.pathname);
   const [health, setHealth] = useState<Health | null>(null);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const route = routeFromPath(path);
 
   const meta = useMemo(() => {
     const byRoute: Record<RouteKey, { titleKey: TranslationKey; descriptionKey: TranslationKey }> = {
@@ -83,8 +74,6 @@ export default function App() {
     };
   }, [route, t]);
 
-  useDocumentMeta(meta);
-
   useEffect(() => {
     const load = () => getHealth().then(setHealth).catch(() => setHealth(null));
     load();
@@ -94,29 +83,8 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const onPopState = () => setPath(normalizePath(window.location.pathname));
-    window.addEventListener('popstate', onPopState);
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
-
-  useEffect(() => {
     void initializeBackgroundNotifications();
   }, []);
-
-  function navigate(nextPath: string) {
-    const normalized = normalizePath(nextPath);
-    if (normalized !== path) {
-      window.history.pushState(null, '', normalized);
-      setPath(normalized);
-    }
-    setControlsOpen(false);
-  }
-
-  function onRouteClick(e: MouseEvent<HTMLAnchorElement>, nextPath: string) {
-    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
-    e.preventDefault();
-    navigate(nextPath);
-  }
 
   const healthLabel = health
     ? health.apiKeyConfigured
@@ -124,42 +92,30 @@ export default function App() {
       : t('health.noApiKey')
     : t('health.backendOffline');
 
-  const page =
-    route === 'home' ? (
-      <HomePage />
-    ) : route === 'image' ? (
-      <ImageGenerate />
-    ) : route === 'video' ? (
-      <VideoGenerate />
-    ) : route === 'privacy' ? (
-      <PrivacyPage />
-    ) : route === 'terms' ? (
-      <TermsPage />
-    ) : route === 'contact' ? (
-      <ContactPage />
-    ) : (
-      <NotFoundPage />
-    );
-
   return (
     <div className="app">
+      <Head>
+        <title>{meta.title}</title>
+        <meta name="description" content={meta.description} />
+      </Head>
       <header className="topbar">
         <div className="topbar-main">
-          <a className="brand" href="/" onClick={(e) => onRouteClick(e, '/')}>
+          <Link className="brand" to="/" onClick={() => setControlsOpen(false)}>
             <span className="logo">✦</span>
             {t('app.brand')}
-          </a>
+          </Link>
           <div className="topbar-nav-row">
             <nav className="tabs" aria-label="Primary">
               {NAV_ITEMS.map((item) => (
-                <a
+                <NavLink
                   key={item.path}
-                  href={item.path}
-                  className={`tab ${route === item.route ? 'active' : ''}`}
-                  onClick={(e) => onRouteClick(e, item.path)}
+                  to={item.path}
+                  end={item.path === '/'}
+                  className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}
+                  onClick={() => setControlsOpen(false)}
                 >
                   {t(item.labelKey)}
-                </a>
+                </NavLink>
               ))}
             </nav>
             <button
@@ -230,7 +186,9 @@ export default function App() {
         </div>
       </header>
 
-      <main>{page}</main>
+      <main>
+        <Outlet />
+      </main>
 
       <SiteFooter wide={route === 'image' || route === 'video'} />
 

@@ -1,0 +1,23 @@
+{
+  "index.html": {
+    "file": "assets/app-BdBdv39J.js",
+    "name": "app",
+    "src": "index.html",
+    "isEntry": true,
+    "dynamicImports": [
+      "node_modules/react-dom/client.js"
+    ],
+    "css": [
+      "assets/app-CkZCj7ni.css"
+    ]
+  },
+  "node_modules/react-dom/client.js": {
+    "file": "assets/client-C5_BiEY7.js",
+    "name": "client",
+    "src": "node_modules/react-dom/client.js",
+    "isDynamicEntry": true,
+    "imports": [
+      "index.html"
+    ]
+  }
+}

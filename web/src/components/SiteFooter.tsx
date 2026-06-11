@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { usePreferences } from '../usePreferences';
 
 interface SiteFooterProps {
@@ -14,9 +15,9 @@ export function SiteFooter({ wide = false }: SiteFooterProps) {
         <span>{t('footer.disclosure')}</span>
       </div>
       <nav className="site-footer-links" aria-label={t('footer.legalNav')}>
-        <a href="/privacy">{t('nav.privacy')}</a>
-        <a href="/terms">{t('nav.terms')}</a>
-        <a href="/contact">{t('nav.contact')}</a>
+        <Link to="/privacy">{t('nav.privacy')}</Link>
+        <Link to="/terms">{t('nav.terms')}</Link>
+        <Link to="/contact">{t('nav.contact')}</Link>
       </nav>
     </footer>
   );

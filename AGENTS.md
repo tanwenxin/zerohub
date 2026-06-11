@@ -37,7 +37,7 @@ Serv00 发布建议流程：
 
 ```bash
 npm install --omit=dev
-npm --prefix web install
+npm --prefix web install --legacy-peer-deps
 npm run build
 devil www restart DOMAIN
 ```

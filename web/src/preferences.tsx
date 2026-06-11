@@ -11,6 +11,7 @@ import {
 import { PreferencesContext, type PreferencesContextValue } from './preferencesContext';
 
 function readStoredTheme(): ThemeId {
+  if (typeof window === 'undefined') return 'default';
   try {
     return normalizeTheme(localStorage.getItem(PREFERENCE_STORAGE_KEYS.theme));
   } catch {
@@ -19,6 +20,7 @@ function readStoredTheme(): ThemeId {
 }
 
 function readStoredLanguage(): Language {
+  if (typeof window === 'undefined') return 'zh';
   try {
     return normalizeLanguage(localStorage.getItem(PREFERENCE_STORAGE_KEYS.language));
   } catch {
@@ -40,7 +42,7 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<ThemeId>(() => readStoredTheme());
   const [language, setLanguage] = useState<Language>(() => readStoredLanguage());
   const [prefersDark, setPrefersDark] = useState(() =>
-    window.matchMedia('(prefers-color-scheme: dark)').matches
+    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches
   );
 
   useEffect(() => {
