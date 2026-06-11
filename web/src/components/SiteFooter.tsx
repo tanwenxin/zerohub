@@ -1,10 +1,14 @@
 import { usePreferences } from '../usePreferences';
 
-export function SiteFooter() {
+interface SiteFooterProps {
+  wide?: boolean;
+}
+
+export function SiteFooter({ wide = false }: SiteFooterProps) {
   const { t } = usePreferences();
 
   return (
-    <footer className="site-footer">
+    <footer className={`site-footer ${wide ? 'wide' : ''}`}>
       <div className="site-footer-brand">
         <strong>{t('app.brand')}</strong>
         <span>{t('footer.disclosure')}</span>

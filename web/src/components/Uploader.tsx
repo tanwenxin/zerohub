@@ -1,5 +1,6 @@
-import { useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePreferences } from '../usePreferences';
+import { MediaPreviewModal, type PreviewMedia } from './MediaPreviewModal';
 
 interface Props {
   files: File[];
@@ -25,8 +26,19 @@ export function Uploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState('');
   const [sizeError, setSizeError] = useState('');
+  const [previewMedia, setPreviewMedia] = useState<PreviewMedia | null>(null);
 
   const total = files.length + urls.length;
+  const filePreviews = useMemo(
+    () => files.map((file) => ({ file, src: URL.createObjectURL(file) })),
+    [files]
+  );
+
+  useEffect(() => {
+    return () => {
+      filePreviews.forEach((item) => URL.revokeObjectURL(item.src));
+    };
+  }, [filePreviews]);
 
   function addFiles(list: FileList | null) {
     if (!list) return;
@@ -93,9 +105,24 @@ export function Uploader({
       </div>
 
       <div className="preview-list">
-        {files.map((f, i) => (
+        {filePreviews.map(({ file, src }, i) => (
           <div className="preview-item" key={`f-${i}`}>
-            <img src={URL.createObjectURL(f)} alt={f.name} />
+            <button
+              type="button"
+              className="preview-thumb"
+              onClick={() => {
+                setPreviewMedia({
+                  kind: 'image',
+                  src,
+                  alt: file.name,
+                  downloadHref: src,
+                  title: file.name,
+                  meta: t('uploader.file'),
+                });
+              }}
+            >
+              <img src={src} alt={file.name} />
+            </button>
             <button
               type="button"
               className="remove"
@@ -108,7 +135,22 @@ export function Uploader({
         ))}
         {urls.map((u, i) => (
           <div className="preview-item" key={`u-${i}`}>
-            <img src={u} alt={`url-${i}`} onError={(e) => (e.currentTarget.style.opacity = '0.3')} />
+            <button
+              type="button"
+              className="preview-thumb"
+              onClick={() => {
+                setPreviewMedia({
+                  kind: 'image',
+                  src: u,
+                  alt: `url-${i}`,
+                  downloadHref: u,
+                  title: t('uploader.url'),
+                  meta: u,
+                });
+              }}
+            >
+              <img src={u} alt={`url-${i}`} onError={(e) => (e.currentTarget.style.opacity = '0.3')} />
+            </button>
             <button
               type="button"
               className="remove"
@@ -122,6 +164,7 @@ export function Uploader({
       </div>
       <p className="hint">{t('uploader.selected', { count: total, max: maxItems })}</p>
       {sizeError && <p className="hint uploader-error">{sizeError}</p>}
+      <MediaPreviewModal media={previewMedia} onClose={() => setPreviewMedia(null)} />
     </div>
   );
 }

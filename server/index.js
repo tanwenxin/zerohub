@@ -8,6 +8,7 @@ const cors = require('cors');
 const config = require('./config');
 const imagesRouter = require('./routes/images');
 const videosRouter = require('./routes/videos');
+const textRouter = require('./routes/text');
 const logger = require('./services/logger');
 
 const app = express();
@@ -32,6 +33,7 @@ app.use((req, res, next) => {
 
 app.use('/api', imagesRouter);
 app.use('/api', videosRouter);
+app.use('/api', textRouter);
 
 // 生产同域部署：Serv00 会优先处理 public/ 静态文件；这里保留本地/代理部署兜底。
 app.use(express.static(publicDir));

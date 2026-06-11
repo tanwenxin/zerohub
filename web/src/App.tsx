@@ -9,12 +9,12 @@ import { TermsPage } from './pages/TermsPage';
 import { ContactPage } from './pages/ContactPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { getHealth, type Health } from './api/client';
-import { ensurePermission, getPermission } from './utils/notify';
+import { initializeBackgroundNotifications } from './utils/notify';
 import { usePreferences } from './usePreferences';
 import { useTaskQueue } from './useTaskQueue';
 import { TasksDrawer } from './components/TasksDrawer';
 import { SiteFooter } from './components/SiteFooter';
-import { LANGUAGES, THEMES } from './theme';
+import { THEMES } from './theme';
 import type { TranslationKey } from './i18n';
 import { useDocumentMeta } from './hooks/useDocumentMeta';
 
@@ -25,6 +25,13 @@ const NAV_ITEMS: { path: string; labelKey: TranslationKey; route: RouteKey }[] =
   { path: '/image', labelKey: 'nav.image', route: 'image' },
   { path: '/video', labelKey: 'nav.video', route: 'video' },
 ];
+
+const THEME_ICON: Record<(typeof THEMES)[number], string> = {
+  auto: '◐',
+  default: '✦',
+  light: '☀',
+  dark: '☾',
+};
 
 function normalizePath(pathname: string): string {
   const path = pathname.replace(/\/+$/, '') || '/';
@@ -55,7 +62,6 @@ export default function App() {
   const { activeCount, maxActive } = useTaskQueue();
   const [path, setPath] = useState(() => normalizePath(window.location.pathname));
   const [health, setHealth] = useState<Health | null>(null);
-  const [perm, setPerm] = useState<NotificationPermission | 'unsupported'>(getPermission());
   const [controlsOpen, setControlsOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const route = routeFromPath(path);
@@ -93,6 +99,10 @@ export default function App() {
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
+  useEffect(() => {
+    void initializeBackgroundNotifications();
+  }, []);
+
   function navigate(nextPath: string) {
     const normalized = normalizePath(nextPath);
     if (normalized !== path) {
@@ -108,19 +118,11 @@ export default function App() {
     navigate(nextPath);
   }
 
-  async function onEnableNotify() {
-    const p = await ensurePermission();
-    setPerm(p);
-  }
-
-  const notifyLabel =
-    perm === 'granted'
-      ? t('notify.enabled')
-      : perm === 'denied'
-      ? t('notify.denied')
-      : perm === 'unsupported'
-      ? t('notify.unsupported')
-      : t('notify.enable');
+  const healthLabel = health
+    ? health.apiKeyConfigured
+      ? 'API'
+      : t('health.noApiKey')
+    : t('health.backendOffline');
 
   const page =
     route === 'home' ? (
@@ -195,7 +197,9 @@ export default function App() {
         <div id="mobile-controls-panel" className={`topbar-controls ${controlsOpen ? 'open' : ''}`}>
           <div className="controls-panel-title">{t('controls.title')}</div>
           <label className="pref-control">
-            <span>{t('theme.label')}</span>
+            <span className="pref-icon" aria-hidden="true">
+              {THEME_ICON[theme]}
+            </span>
             <select
               name="theme"
               value={theme}
@@ -209,55 +213,26 @@ export default function App() {
               ))}
             </select>
           </label>
-          <label className="pref-control">
-            <span>{t('language.label')}</span>
-            <select
-              name="language"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value as typeof language)}
-              aria-label={t('language.label')}
-            >
-              {LANGUAGES.map((item) => (
-                <option key={item} value={item}>
-                  {t(`language.${item}` as TranslationKey)}
-                </option>
-              ))}
-            </select>
-          </label>
           <button
-            className={`notify-btn ${perm === 'granted' ? 'on' : ''}`}
-            onClick={onEnableNotify}
-            disabled={perm === 'unsupported' || perm === 'denied'}
-            title={t('notify.title')}
-            aria-label={t('notify.title')}
+            type="button"
+            className="pref-control pref-button"
+            onClick={() => setLanguage(language === 'zh' ? 'en' : 'zh')}
+            title={t('language.label')}
+            aria-label={t('language.label')}
           >
-            🔔 {notifyLabel}
+            <span className="pref-icon" aria-hidden="true">
+              {language === 'zh' ? '中' : 'EN'}
+            </span>
           </button>
-          <div className="health">
-            {health ? (
-              <>
-                <span className={`dot ${health.apiKeyConfigured ? 'ok' : 'warn'}`} />
-                {health.apiKeyConfigured ? t('health.connected') : t('health.noApiKey')}
-                <span className="queue-info">
-                  {t('health.queue', {
-                    running: health.queue.running,
-                    max: health.queue.maxConcurrency,
-                  })}
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="dot warn" />
-                {t('health.backendOffline')}
-              </>
-            )}
+          <div className="health" title={healthLabel} aria-label={healthLabel}>
+            <span className={`dot ${health?.apiKeyConfigured ? 'ok' : 'warn'}`} />
           </div>
         </div>
       </header>
 
       <main>{page}</main>
 
-      <SiteFooter />
+      <SiteFooter wide={route === 'image' || route === 'video'} />
 
       <TasksDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
     </div>

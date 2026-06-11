@@ -84,6 +84,7 @@ export function useMultiGeneration(language: Language = 'zh') {
                 prompt: local.prompt,
                 success: true,
                 imageUrl: firstImg ? imageSrc(firstImg) : undefined,
+                completedAt: t.updatedAt,
               });
             } else {
               notifyTaskFinished({
@@ -92,6 +93,7 @@ export function useMultiGeneration(language: Language = 'zh') {
                 prompt: local.prompt,
                 success: false,
                 errorMessage: t.error?.message,
+                completedAt: t.updatedAt,
               });
             }
           }

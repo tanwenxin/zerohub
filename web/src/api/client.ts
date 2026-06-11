@@ -181,6 +181,48 @@ export function downloadUrl(taskId: string, index: number): string {
   return `/api/tasks/${taskId}/download/${index}`;
 }
 
+/** 调用文本模型优化提示词，按当前生成模式走对应的结构化规范，返回优化后的提示词 */
+export async function optimizePrompt(
+  prompt: string,
+  mode: TaskType
+): Promise<{ prompt: string }> {
+  const res = await fetch('/api/text/optimize-prompt', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, mode }),
+  });
+  if (!res.ok) await throwResponseError(res);
+  return res.json();
+}
+
+/**
+ * 调用文本模型理解图片（https URL 或 data URI），结合用户已输入的 prompt（可选），
+ * 返回符合当前生成模式规范的提示词。
+ */
+export async function understandImage(
+  image: string,
+  mode: TaskType,
+  prompt?: string
+): Promise<{ result: string }> {
+  const res = await fetch('/api/text/understand-image', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image, mode, prompt }),
+  });
+  if (!res.ok) await throwResponseError(res);
+  return res.json();
+}
+
+/** 将本地文件读取为 Data URI（base64），供图片理解传给后端 */
+export function fileToDataUri(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error || new Error('读取文件失败'));
+    reader.readAsDataURL(file);
+  });
+}
+
 export function videoDownloadUrl(taskId: string): string {
   return `/api/videos/${taskId}/download`;
 }

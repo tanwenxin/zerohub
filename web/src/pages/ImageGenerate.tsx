@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { PromptForm } from '../components/PromptForm';
 import { Uploader } from '../components/Uploader';
+import { PromptOptimizeButton } from '../components/PromptOptimizeButton';
+import { ImageUnderstandPanel } from '../components/ImageUnderstandPanel';
 import { SubmitFeedback } from '../components/SubmitFeedback';
 import { TaskHistory } from '../components/TaskHistory';
 import { useTaskQueue } from '../useTaskQueue';
-import { ensurePermission } from '../utils/notify';
 import {
   DEFAULT_IMAGE_SIZE,
   clearImageSizePreference,
@@ -18,6 +19,7 @@ import {
   saveImageDraft,
   saveImageDraftFiles,
 } from '../utils/draftStorage';
+import { isGenerationSizeValue } from '../utils/generationSizes';
 import type { ImageTaskType, ResponseFormat, Task } from '../api/client';
 import { usePreferences } from '../usePreferences';
 import type { TranslationKey } from '../i18n';
@@ -38,7 +40,10 @@ export function ImageGenerate() {
     return d && IMAGE_MODES.includes(d.mode) ? d.mode : 'text2img';
   });
   const [prompt, setPrompt] = useState(() => readImageDraft()?.prompt ?? '');
-  const [size, setSize] = useState(() => readImageDraft()?.size || readImageSizePreference());
+  const [size, setSize] = useState(() => {
+    const draftSize = readImageDraft()?.size || null;
+    return isGenerationSizeValue(draftSize) ? draftSize : readImageSizePreference();
+  });
   const [responseFormat, setResponseFormat] = useState<ResponseFormat>(
     () => readImageDraft()?.responseFormat ?? 'url'
   );
@@ -106,7 +111,6 @@ export function ImageGenerate() {
       imageUrls: needsImage ? urls : undefined,
     });
     if (!wasAccepted) return;
-    ensurePermission();
     setSubmitFeedback('accepted');
     // 提交成功后清空当前输入与草稿，为下一次生成准备干净环境
     setPrompt('');
@@ -139,7 +143,7 @@ export function ImageGenerate() {
     setMode(nextMode);
     if (typeof params.prompt === 'string') setPrompt(params.prompt);
     const nextSize = (params.size as string) || (task.result?.size as string) || '';
-    if (/^\d+x\d+$/.test(nextSize)) setSize(nextSize);
+    if (isGenerationSizeValue(nextSize)) setSize(nextSize);
     if (params.responseFormat === 'url' || params.responseFormat === 'b64_json') {
       setResponseFormat(params.responseFormat);
     }
@@ -174,13 +178,22 @@ export function ImageGenerate() {
 
         {needsImage && (
           <>
-            <p className="compliance-inline">{t('imageLanding.uploadNotice')}</p>
             <Uploader
               files={files}
               urls={urls}
               onFilesChange={setFiles}
               onUrlsChange={setUrls}
               maxItems={mode === 'img2img' ? 1 : 8}
+            />
+            <ImageUnderstandPanel
+              files={files}
+              urls={urls}
+              mode={mode}
+              prompt={prompt}
+              onUseAsPrompt={(text) => {
+                setPrompt(text);
+                setFormKey((k) => k + 1);
+              }}
             />
           </>
         )}
@@ -192,6 +205,16 @@ export function ImageGenerate() {
           responseFormat={responseFormat}
           placeholder={t(placeholderKey)}
           defaultSize={DEFAULT_IMAGE_SIZE}
+          promptAction={(
+            <PromptOptimizeButton
+              prompt={prompt}
+              mode={mode}
+              onOptimized={(text) => {
+                setPrompt(text);
+                setFormKey((k) => k + 1);
+              }}
+            />
+          )}
           onPromptChange={setPrompt}
           onSizeChange={onSizeChange}
           onResponseFormatChange={setResponseFormat}

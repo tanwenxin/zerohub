@@ -12,23 +12,23 @@ function bufferToDataUri(buffer, mimeType) {
   return `data:${mime};base64,${buffer.toString('base64')}`;
 }
 
-function isHttpUrl(value, { requireHttps = false } = {}) {
+function isHttpUrl(value) {
   if (typeof value !== 'string') return false;
   try {
     const u = new URL(value);
-    return requireHttps ? u.protocol === 'https:' : u.protocol === 'http:' || u.protocol === 'https:';
+    return u.protocol === 'http:' || u.protocol === 'https:';
   } catch {
     return false;
   }
 }
 
 function isDataUri(value) {
-  return typeof value === 'string' && /^data:image\/[a-zA-Z0-9.+-]+;base64,[A-Za-z0-9+/]+={0,2}$/.test(value);
+  return typeof value === 'string' && value.startsWith('data:');
 }
 
 /** 校验一个图片输入项是否合法（URL 或 Data URI） */
-function isValidImageInput(value, opts) {
-  return isHttpUrl(value, opts) || isDataUri(value);
+function isValidImageInput(value) {
+  return isHttpUrl(value) || isDataUri(value);
 }
 
 /** 生成用于日志的安全预览，截断超长的 base64 字符串 */

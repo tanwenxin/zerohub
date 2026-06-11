@@ -184,7 +184,7 @@ class KeyPool {
 const keyPool = new KeyPool({
   keys: config.agnes.apiKeys,
   windowMs: config.rateLimit.windowMs,
-  limits: { image: config.rateLimit.imageRpm, video: config.rateLimit.videoRpm },
+  limits: { image: config.rateLimit.imageRpm, video: config.rateLimit.videoRpm, text: config.rateLimit.textRpm },
   waitPollMs: config.rateLimit.waitPollMs,
   maxWaitMs: config.rateLimit.maxWaitMs,
 });

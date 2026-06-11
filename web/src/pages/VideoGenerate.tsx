@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { Uploader } from '../components/Uploader';
 import { TaskHistory } from '../components/TaskHistory';
 import { SubmitFeedback } from '../components/SubmitFeedback';
+import { PromptOptimizeButton } from '../components/PromptOptimizeButton';
+import { ImageUnderstandPanel } from '../components/ImageUnderstandPanel';
 import { useTaskQueue } from '../useTaskQueue';
-import { ensurePermission } from '../utils/notify';
 import {
   DEFAULT_VIDEO_SIZE,
   clearVideoSizePreference,
@@ -27,6 +28,7 @@ import {
   saveVideoDraft,
   saveVideoDraftFiles,
 } from '../utils/draftStorage';
+import { GENERATION_SIZE_OPTIONS, isGenerationSizeValue } from '../utils/generationSizes';
 import type { Task, VideoTaskType } from '../api/client';
 import { usePreferences } from '../usePreferences';
 import type { TranslationKey } from '../i18n';
@@ -48,8 +50,6 @@ const DURATIONS: { frames: number; labelKey: TranslationKey }[] = [
   { frames: 441, labelKey: 'video.duration.18s' },
 ];
 
-const SIZES = ['1152x768', '768x1152', '1024x1024', '1280x720', '720x1280'];
-
 export function VideoGenerate() {
   const { t } = usePreferences();
   const [mode, setMode] = useState<VideoTaskType>(() => {
@@ -64,7 +64,10 @@ export function VideoGenerate() {
   const [frameRate, setFrameRate] = useState(
     () => readVideoDraft()?.frameRate ?? readVideoFrameRatePreference()
   );
-  const [sizeStr, setSizeStr] = useState(() => readVideoDraft()?.size || readVideoSizePreference());
+  const [sizeStr, setSizeStr] = useState(() => {
+    const draftSize = readVideoDraft()?.size || null;
+    return isGenerationSizeValue(draftSize) ? draftSize : readVideoSizePreference();
+  });
   const [seed, setSeed] = useState(() => readVideoDraft()?.seed ?? readVideoSeedPreference());
   const [files, setFiles] = useState<File[]>(() => readVideoDraftFiles());
   const [urls, setUrls] = useState<string[]>(() => readVideoDraft()?.urls ?? []);
@@ -97,13 +100,6 @@ export function VideoGenerate() {
   const accepted = submitFeedback === 'accepted';
   const estSeconds = (frames / frameRate).toFixed(1);
 
-  const uploadHintKey: TranslationKey =
-    mode === 'img2vid'
-      ? 'video.uploadHintImg'
-      : mode === 'multivid'
-        ? 'video.uploadHintMulti'
-        : 'video.uploadHintKey';
-
   const buttonLabel = needsImage && !enoughImages
     ? t('video.needImages', { count: minImages - imageCount })
     : !queueHasRoom
@@ -130,7 +126,6 @@ export function VideoGenerate() {
       imageUrls: needsImage ? urls : undefined,
     });
     if (!wasAccepted) return;
-    ensurePermission();
     setSubmitFeedback('accepted');
     // 提交成功后清空临时输入（提示词与上传/参考图）与草稿，参数设置仍按偏好保留
     setPrompt('');
@@ -189,7 +184,8 @@ export function VideoGenerate() {
     if (Number.isFinite(Number(params.frameRate))) onVideoFrameRateChange(Number(params.frameRate));
     const w = Number(params.width);
     const h = Number(params.height);
-    if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) onVideoSizeChange(`${w}x${h}`);
+    const nextSize = `${w}x${h}`;
+    if (isGenerationSizeValue(nextSize)) onVideoSizeChange(nextSize);
     onVideoSeedChange(params.seed != null ? String(params.seed) : '');
     // 参考图：仅 URL 类可回填（历史未持久化本地文件 base64）
     const fillUrls = Array.isArray(params.imageUrls) ? (params.imageUrls as string[]) : [];
@@ -221,8 +217,6 @@ export function VideoGenerate() {
 
         {needsImage && (
           <>
-            <p className="hint">{t(uploadHintKey)}</p>
-            <p className="compliance-inline">{t('videoLanding.uploadNotice')}</p>
             <Uploader
               files={files}
               urls={urls}
@@ -230,17 +224,27 @@ export function VideoGenerate() {
               onUrlsChange={setUrls}
               maxItems={mode === 'img2vid' ? 1 : 8}
             />
+            <ImageUnderstandPanel
+              files={files}
+              urls={urls}
+              mode={mode}
+              prompt={prompt}
+              onUseAsPrompt={setPrompt}
+            />
           </>
         )}
 
         <label className="field">
           <span>{t('form.prompt')}</span>
-          <textarea
-            rows={4}
-            value={prompt}
-            placeholder={t('page.video.placeholder')}
-            onChange={(e) => setPrompt(e.target.value)}
-          />
+          <div className="prompt-input-wrap">
+            <textarea
+              rows={4}
+              value={prompt}
+              placeholder={t('page.video.placeholder')}
+              onChange={(e) => setPrompt(e.target.value)}
+            />
+            <PromptOptimizeButton prompt={prompt} mode={mode} onOptimized={setPrompt} />
+          </div>
         </label>
 
         <label className="field">
@@ -281,9 +285,9 @@ export function VideoGenerate() {
             <span>{t('video.size')}</span>
             <div className="size-control">
               <select value={sizeStr} onChange={(e) => onVideoSizeChange(e.target.value)}>
-                {SIZES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
+                {GENERATION_SIZE_OPTIONS.map((sizeOption) => (
+                  <option key={sizeOption.value} value={sizeOption.value}>
+                    {sizeOption.label} ({t(sizeOption.descKey)})
                   </option>
                 ))}
               </select>

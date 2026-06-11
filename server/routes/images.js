@@ -30,99 +30,6 @@ const queue = new RequestQueue({
 });
 
 const VALID_TYPES = ['text2img', 'img2img', 'multi'];
-const VALID_RESPONSE_FORMATS = ['url', 'b64_json'];
-
-function pickImageArray(body) {
-  if (Array.isArray(body.image)) return body.image;
-  if (body.extra_body && Array.isArray(body.extra_body.image)) return body.extra_body.image;
-  return [];
-}
-
-function buildJsonGenerationInput(body) {
-  if (!body || typeof body !== 'object') {
-    const err = new Error('请求体必须为 JSON 对象');
-    err.status = 400;
-    throw err;
-  }
-  if (body.model !== config.agnes.model) {
-    const err = new Error(`model 必须为 ${config.agnes.model}`);
-    err.status = 400;
-    throw err;
-  }
-  if (!body.prompt || typeof body.prompt !== 'string' || !body.prompt.trim()) {
-    const err = new Error('prompt 不能为空');
-    err.status = 400;
-    throw err;
-  }
-  if (!body.size || typeof body.size !== 'string' || !body.size.trim()) {
-    const err = new Error('size 不能为空');
-    err.status = 400;
-    throw err;
-  }
-
-  if (body.image !== undefined && !Array.isArray(body.image)) {
-    const err = new Error('image 必须为 string[]');
-    err.status = 400;
-    throw err;
-  }
-  if (body.extra_body && body.extra_body.image !== undefined && !Array.isArray(body.extra_body.image)) {
-    const err = new Error('extra_body.image 必须为 string[]');
-    err.status = 400;
-    throw err;
-  }
-
-  const rawImage = pickImageArray(body);
-  const image = rawImage.map((v) => (typeof v === 'string' ? v.trim() : ''));
-  if (rawImage.some((v, i) => typeof v !== 'string' || !image[i])) {
-    const err = new Error('image 必须为非空 string[]');
-    err.status = 400;
-    throw err;
-  }
-  const type = image.length > 1 ? 'multi' : image.length === 1 ? 'img2img' : 'text2img';
-  const responseFormat =
-    type === 'text2img' && body.return_base64 === true
-      ? 'b64_json'
-      : body.extra_body && body.extra_body.response_format
-        ? body.extra_body.response_format
-        : 'url';
-
-  if (!VALID_RESPONSE_FORMATS.includes(responseFormat)) {
-    const err = new Error(`extra_body.response_format 非法，应为 ${VALID_RESPONSE_FORMATS.join('/')}`);
-    err.status = 400;
-    throw err;
-  }
-  if (type !== 'text2img' && body.return_base64 === true && responseFormat !== 'b64_json') {
-    const err = new Error('图生图 Base64 输出请使用 extra_body.response_format: b64_json');
-    err.status = 400;
-    throw err;
-  }
-  const invalid = image.find((v) => !isValidImageInput(v, { requireHttps: true }));
-  if (invalid) {
-    const err = new Error('存在非法图片输入，必须为 HTTPS URL 或图片 Data URI Base64');
-    err.status = 400;
-    throw err;
-  }
-
-  const sizeInfo = agnesClient.normalizeSize(body.size);
-  return {
-    type,
-    prompt: body.prompt.trim(),
-    size: sizeInfo.size,
-    image,
-    responseFormat,
-  };
-}
-
-function sendDirectError(res, err) {
-  const status = err.status || 500;
-  return res.status(status).json({
-    error: {
-      message: err.userMessage || err.message || '生成失败',
-      code: err.code || String(status),
-      status,
-    },
-  });
-}
 
 // 同进程内保存任务的完整输入（含上传图片的 data URI），供「刷新→重试」复用；
 // 持久化文件中不含 base64，重启后该缓存丢失，刷新将退化为用 URL 参数重跑。
@@ -249,36 +156,6 @@ function failTask(task, err) {
 }
 
 /**
- * POST /api/v1/images/generations
- * 文档兼容 JSON 接口：同步返回 { created, data }，保留现有 /api/generate 的异步任务接口。
- */
-router.post('/v1/images/generations', async (req, res) => {
-  if (!config.isApiKeyConfigured && !config.agnes.mock) {
-    return sendDirectError(res, {
-      status: 401,
-      code: 'AUTH_ERROR',
-      message: '未配置 AGNES_API_KEY',
-      userMessage: '鉴权失败，请检查 API Key 配置',
-    });
-  }
-
-  let input;
-  try {
-    input = buildJsonGenerationInput(req.body);
-  } catch (err) {
-    return sendDirectError(res, err);
-  }
-
-  try {
-    const apiKey = await keyPool.acquire('image');
-    const result = await queue.enqueue(() => agnesClient.generate(input, { apiKey }));
-    return res.json({ created: result.created, data: result.data || [] });
-  } catch (err) {
-    return sendDirectError(res, err);
-  }
-});
-
-/**
  * POST /api/generate
  * 表单字段：type, prompt, size, responseFormat, imageUrls(JSON 字符串), images(文件)
  * 返回：{ taskId }
@@ -291,10 +168,6 @@ router.post('/generate', upload.array('images', 8), (req, res) => {
   }
   if (!prompt || !prompt.trim()) {
     return res.status(400).json({ error: 'prompt 不能为空' });
-  }
-  const normalizedResponseFormat = responseFormat || 'url';
-  if (!VALID_RESPONSE_FORMATS.includes(normalizedResponseFormat)) {
-    return res.status(400).json({ error: `responseFormat 非法，应为 ${VALID_RESPONSE_FORMATS.join('/')}` });
   }
 
   let urlList = [];
@@ -318,9 +191,9 @@ router.post('/generate', upload.array('images', 8), (req, res) => {
     if (type === 'multi' && image.length < 2) {
       return res.status(400).json({ error: '多图合成至少需要 2 张输入图片' });
     }
-    const invalid = image.find((v) => !isValidImageInput(v, { requireHttps: true }));
+    const invalid = image.find((v) => !isValidImageInput(v));
     if (invalid) {
-      return res.status(400).json({ error: '存在非法图片输入，必须为 HTTPS URL 或图片 Data URI Base64' });
+      return res.status(400).json({ error: '存在非法图片输入，必须为 http(s) URL 或 Data URI' });
     }
   }
 
@@ -330,13 +203,19 @@ router.post('/generate', upload.array('images', 8), (req, res) => {
     prompt: prompt.trim(),
     size: sizeInfo.size,
     image,
-    responseFormat: normalizedResponseFormat,
+    responseFormat: responseFormat === 'b64_json' ? 'b64_json' : 'url',
   };
   if (sizeInfo.adjusted) {
     logger.info('request.size_adjusted', { type, original: sizeInfo.original, adjusted: sizeInfo.size });
   }
 
-  const payloadPreview = buildPayloadPreview(agnesClient.buildRequestBody(input));
+  const payloadPreview = buildPayloadPreview({
+    model: config.agnes.model,
+    prompt: input.prompt,
+    size: input.size,
+    image: input.image,
+    extra_body: { response_format: input.responseFormat },
+  });
 
   // 创建任务并立即持久化（前端发起即落盘）。params 仅保存可重放的 URL/文本类字段。
   const task = taskStore.create(type, payloadPreview, {

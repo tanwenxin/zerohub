@@ -1,5 +1,7 @@
-export const DEFAULT_IMAGE_SIZE = '1024x1024';
-export const DEFAULT_VIDEO_SIZE = '1152x768';
+import { DEFAULT_GENERATION_SIZE, isGenerationSizeValue } from './generationSizes';
+
+export const DEFAULT_IMAGE_SIZE = DEFAULT_GENERATION_SIZE;
+export const DEFAULT_VIDEO_SIZE = DEFAULT_GENERATION_SIZE;
 export const DEFAULT_VIDEO_MODE = 'text2vid';
 export const DEFAULT_VIDEO_FRAMES = 121;
 export const DEFAULT_VIDEO_FRAME_RATE = 24;
@@ -17,10 +19,6 @@ const STORAGE_KEYS = {
 const VIDEO_MODES = ['text2vid', 'img2vid', 'multivid', 'keyframes'] as const;
 const VIDEO_FRAME_VALUES = [81, 121, 241, 441] as const;
 const VIDEO_FRAME_RATE_VALUES = [8, 12, 16, 24, 30] as const;
-
-function isSizeValue(value: string | null): value is string {
-  return Boolean(value && /^\d+x\d+$/.test(value));
-}
 
 function isVideoMode(value: string | null): value is (typeof VIDEO_MODES)[number] {
   return VIDEO_MODES.some((mode) => mode == value);
@@ -72,14 +70,14 @@ function readSizePreference(key: keyof typeof STORAGE_KEYS, fallback: string): s
   if (typeof window === 'undefined') return fallback;
   try {
     const value = window.localStorage.getItem(STORAGE_KEYS[key]);
-    return isSizeValue(value) ? value : fallback;
+    return isGenerationSizeValue(value) ? value : fallback;
   } catch {
     return fallback;
   }
 }
 
 function writeSizePreference(key: keyof typeof STORAGE_KEYS, value: string) {
-  if (typeof window === 'undefined' || !isSizeValue(value)) return;
+  if (typeof window === 'undefined' || !isGenerationSizeValue(value)) return;
   try {
     window.localStorage.setItem(STORAGE_KEYS[key], value);
   } catch {
