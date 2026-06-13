@@ -7,6 +7,12 @@ import { PrivacyPage } from './pages/PrivacyPage';
 import { TermsPage } from './pages/TermsPage';
 import { ContactPage } from './pages/ContactPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { DesignSystemPage } from './pages/DesignSystemPage';
+
+// 设计系统预览仅在开发环境注册，不进入生产构建路由。
+const devRoutes: RouteRecord[] = import.meta.env.DEV
+  ? [{ path: 'design-system', element: <DesignSystemPage /> }]
+  : [];
 
 export const routes: RouteRecord[] = [
   {
@@ -19,6 +25,7 @@ export const routes: RouteRecord[] = [
       { path: 'privacy', element: <PrivacyPage /> },
       { path: 'terms', element: <TermsPage /> },
       { path: 'contact', element: <ContactPage /> },
+      ...devRoutes,
       { path: '*', element: <NotFoundPage /> },
     ],
   },

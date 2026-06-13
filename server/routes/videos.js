@@ -46,6 +46,52 @@ function collectImages(req) {
   return images;
 }
 
+function hasValue(value) {
+  return value !== undefined && value !== null && value !== '';
+}
+
+function parseOptionalNumber(value) {
+  if (!hasValue(value)) return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function validateVideoParams(fields) {
+  const width = parseOptionalNumber(fields.width);
+  if (width === null || (width !== undefined && (!Number.isSafeInteger(width) || width <= 0))) {
+    return 'width 非法，应为正整数';
+  }
+
+  const height = parseOptionalNumber(fields.height);
+  if (height === null || (height !== undefined && (!Number.isSafeInteger(height) || height <= 0))) {
+    return 'height 非法，应为正整数';
+  }
+
+  const numFrames = parseOptionalNumber(fields.numFrames);
+  if (
+    numFrames === null ||
+    (numFrames !== undefined &&
+      (!Number.isSafeInteger(numFrames) ||
+        numFrames < 9 ||
+        numFrames > config.video.maxFrames ||
+        (numFrames - 1) % 8 !== 0))
+  ) {
+    return `numFrames 非法，应为 9-${config.video.maxFrames} 内且满足 8n+1 的整数`;
+  }
+
+  const frameRate = parseOptionalNumber(fields.frameRate);
+  if (frameRate === null || (frameRate !== undefined && (!Number.isSafeInteger(frameRate) || frameRate < 1 || frameRate > 60))) {
+    return 'frameRate 非法，应为 1-60 的整数';
+  }
+
+  const seed = parseOptionalNumber(fields.seed);
+  if (seed === null || (seed !== undefined && !Number.isSafeInteger(seed))) {
+    return 'seed 非法，应为整数';
+  }
+
+  return null;
+}
+
 /** 将任务置为失败 */
 function failTask(task, err) {
   taskStore.update(task.id, {
@@ -245,6 +291,10 @@ router.post('/videos', upload.array('images', 8), (req, res) => {
   }
   if (!prompt || !prompt.trim()) {
     return res.status(400).json({ error: 'prompt 不能为空' });
+  }
+  const paramError = validateVideoParams({ width, height, numFrames, frameRate, seed });
+  if (paramError) {
+    return res.status(400).json({ error: paramError });
   }
 
   let urlList = [];

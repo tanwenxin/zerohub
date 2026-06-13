@@ -1,0 +1,119 @@
+/* 设计系统预览页样式（仅开发环境）。 */
+.ds-page {
+  max-width: var(--container-max);
+  margin: 0 auto;
+}
+.ds-title {
+  margin: 0 0 var(--space-4);
+  font-family: var(--font-display);
+  font-size: clamp(32px, 5vw, var(--text-3xl));
+  letter-spacing: var(--tracking-display);
+}
+.ds-block {
+  padding-block: var(--space-8);
+  border-top: 1px solid var(--border-soft);
+}
+.ds-block h2 {
+  margin: 0 0 var(--space-5);
+  font-size: var(--text-2xl);
+  letter-spacing: var(--tracking-display);
+}
+.ds-block h3 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-lg);
+}
+.ds-gap-top {
+  margin-top: var(--space-3);
+}
+
+/* 色板 */
+.ds-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--space-3);
+}
+.ds-swatch {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: color-mix(in oklab, var(--surface) 50%, transparent);
+}
+.ds-swatch-chip {
+  height: 56px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.ds-swatch strong {
+  font-size: var(--text-sm);
+}
+.ds-swatch code,
+.ds-type-row code,
+.ds-space-row code,
+.ds-radius-item code {
+  color: var(--muted);
+  font: var(--text-xs) var(--font-mono);
+}
+
+/* 字体 */
+.ds-type-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-bottom: 1px solid var(--border-soft);
+  padding-bottom: var(--space-2);
+}
+.ds-mono {
+  margin: 0;
+  color: var(--meta);
+  font-family: var(--font-mono);
+}
+
+/* 间距 */
+.ds-space-list {
+  display: grid;
+  gap: var(--space-3);
+}
+.ds-space-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.ds-space-bar {
+  height: 16px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+}
+
+/* 圆角 */
+.ds-radius-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+.ds-radius-item {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+}
+.ds-radius-box {
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--accent);
+  background: color-mix(in oklab, var(--accent) 14%, transparent);
+}
+
+/* 布局示意单元 */
+.ds-cell {
+  display: grid;
+  place-items: center;
+  min-height: 64px;
+  flex: 1;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--surface) 50%, transparent);
+  color: var(--muted);
+  font: var(--text-sm) var(--font-mono);
+}

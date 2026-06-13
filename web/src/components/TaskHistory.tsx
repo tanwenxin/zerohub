@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
   getTask,
   refreshTask,
@@ -16,7 +16,6 @@ import {
 import { MediaPreviewModal, type PreviewMedia } from './MediaPreviewModal';
 import {
   HistoryToolbar,
-  type HistoryLayout,
   type HistorySort,
   type HistoryStatusFilter,
 } from './HistoryToolbar';
@@ -45,22 +44,10 @@ const STATUS_KEY: Record<Task['status'], TranslationKey> = {
 
 const ACTIVE_STATUSES: Task['status'][] = ['pending', 'queued', 'running'];
 type HistoryCategory = 'image' | 'video';
+const PROMPT_COLLAPSE_THRESHOLD = 120;
 
 function historyStorageKey(category: HistoryCategory, name: string): string {
   return `agnes:${category}-history-${name}`;
-}
-
-function historyLayoutKey(category: HistoryCategory): string {
-  return `agnes:${category}-history-layout`;
-}
-
-function readHistoryLayout(category: HistoryCategory): HistoryLayout {
-  if (typeof window === 'undefined') return 'list';
-  try {
-    return window.localStorage.getItem(historyLayoutKey(category)) === 'masonry' ? 'masonry' : 'list';
-  } catch {
-    return 'list';
-  }
 }
 
 function readHistoryStatusFilter(category: HistoryCategory): HistoryStatusFilter {
@@ -140,6 +127,7 @@ interface Props {
   currentPrompt?: string;
   onPromptFill?: (prompt: string) => void;
   onFill?: (task: Task) => void; // 回填整条记录（提示词+参数+参考图）
+  showToolbar?: boolean; // 是否展示搜索/筛选/排序/布局工具栏（默认展示）
 }
 
 /**
@@ -148,15 +136,16 @@ interface Props {
  * - 进行中任务按本地 task id 自动轮询刷新；
  * - 图片失败任务提供「刷新」按钮，重新查询或重新发起。
  */
-export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPromptFill, onFill }: Props) {
+export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPromptFill, onFill, showToolbar = true }: Props) {
   const { t } = usePreferences();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [previewMedia, setPreviewMedia] = useState<PreviewMedia | null>(null);
   const [pendingTask, setPendingTask] = useState<Task | null>(null);
+  const [expandedPrompt, setExpandedPrompt] = useState<string | null>(null);
+  const [promptCopied, setPromptCopied] = useState(false);
   const [searchText, setSearchText] = useState(() => readHistorySearch(category));
-  const [layout, setLayout] = useState<HistoryLayout>(() => readHistoryLayout(category));
   const [statusFilter, setStatusFilter] = useState<HistoryStatusFilter>(() => readHistoryStatusFilter(category));
   const [sortOrder, setSortOrder] = useState<HistorySort>(() => readHistorySort(category));
   const deferredSearchText = useDeferredValue(searchText);
@@ -203,18 +192,16 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
 
   useEffect(() => {
     try {
-      window.localStorage.setItem(historyLayoutKey(category), layout);
       window.localStorage.setItem(historyStorageKey(category, 'status-filter'), statusFilter);
       window.localStorage.setItem(historyStorageKey(category, 'sort'), sortOrder);
       window.localStorage.setItem(historyStorageKey(category, 'search'), searchText);
     } catch {
       /* 忽略本地存储不可用 */
     }
-  }, [category, layout, searchText, sortOrder, statusFilter]);
+  }, [category, searchText, sortOrder, statusFilter]);
 
   useEffect(() => {
     const id = window.setTimeout(() => {
-      setLayout(readHistoryLayout(category));
       setSearchText(readHistorySearch(category));
       setStatusFilter(readHistoryStatusFilter(category));
       setSortOrder(readHistorySort(category));
@@ -230,6 +217,15 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
     window.addEventListener(LOCAL_HISTORY_UPDATED_EVENT, syncLocalHistory);
     return () => window.removeEventListener(LOCAL_HISTORY_UPDATED_EVENT, syncLocalHistory);
   }, [category]);
+
+  useEffect(() => {
+    if (!expandedPrompt) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setExpandedPrompt(null);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [expandedPrompt]);
 
   const visibleTasks = useMemo(() => {
     const query = deferredSearchText.trim().toLowerCase();
@@ -260,11 +256,6 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
     setTasks((prev) => prev.filter((x) => x.id != task.id));
   }
 
-  function shouldIgnorePromptFill(target: EventTarget | null): boolean {
-    if (!(target instanceof Element)) return false;
-    return Boolean(target.closest('button,a,input,select,textarea,label'));
-  }
-
   // 回填整条记录：若提供 onFill 则回填全部（提示词+参数+参考图），否则退回仅回填提示词。
   // 当前输入框已有内容时弹窗确认，避免误覆盖。
   function fillTask(task: Task) {
@@ -286,21 +277,37 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
     }
   }
 
-  function onHistoryItemClick(event: MouseEvent<HTMLDivElement>, task: Task) {
-    if (shouldIgnorePromptFill(event.target)) return;
-    fillTask(task);
-  }
-
-  function onHistoryItemKeyDown(event: KeyboardEvent<HTMLDivElement>, task: Task) {
-    if (event.target !== event.currentTarget) return;
-    if (event.key !== 'Enter' && event.key !== ' ') return;
-    event.preventDefault();
-    fillTask(task);
-  }
-
   function confirmFill() {
     if (pendingTask) applyFill(pendingTask);
     setPendingTask(null);
+  }
+
+  function openPrompt(prompt: string) {
+    setExpandedPrompt(prompt);
+    setPromptCopied(false);
+  }
+
+  async function copyExpandedPrompt() {
+    if (!expandedPrompt) return;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(expandedPrompt);
+      } else {
+        throw new Error('Clipboard API unavailable');
+      }
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = expandedPrompt;
+      textarea.setAttribute('readonly', '');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+    }
+    setPromptCopied(true);
+    window.setTimeout(() => setPromptCopied(false), 1800);
   }
 
   if (loading) return <div className="empty">{t('history.loading')}</div>;
@@ -308,23 +315,22 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
 
   return (
     <div className="history">
-      <HistoryToolbar
-        visibleCount={visibleTasks.length}
-        totalCount={tasks.length}
-        searchText={searchText}
-        filtering={filtering}
-        statusFilter={statusFilter}
-        sortOrder={sortOrder}
-        layout={layout}
-        onSearchTextChange={setSearchText}
-        onStatusFilterChange={setStatusFilter}
-        onSortOrderChange={setSortOrder}
-        onLayoutChange={setLayout}
-      />
+      <p className="history-subtitle">{t('history.count', { count: tasks.length })}</p>
+      {showToolbar && (
+        <HistoryToolbar
+          searchText={searchText}
+          filtering={filtering}
+          statusFilter={statusFilter}
+          sortOrder={sortOrder}
+          onSearchTextChange={setSearchText}
+          onStatusFilterChange={setStatusFilter}
+          onSortOrderChange={setSortOrder}
+        />
+      )}
       {(searchText.trim() || statusFilter !== 'all') && visibleTasks.length === 0 ? (
         <div className="empty history-empty-filter">{t('history.noMatches')}</div>
       ) : (
-      <div className={`task-history-list layout-${layout}`}>
+      <div className="task-history-list layout-masonry">
         {visibleTasks.map((task) => {
           const isActive = ACTIVE_STATUSES.includes(task.status);
           const isError = task.status === 'error';
@@ -335,26 +341,26 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
           const duration = isDone ? formatDuration(task.durationMs) : '';
           const videoUrl = isDone && task.result?.videoUrl ? task.result.videoUrl : '';
           const fillable = Boolean(onFill || (prompt && onPromptFill));
+          const isLongPrompt = prompt.trim().length > PROMPT_COLLAPSE_THRESHOLD;
+          // 回填按钮：与下载按钮同形态、同一操作行展示
+          const fillButton = fillable ? (
+            <button type="button" className="btn-secondary" onClick={() => fillTask(task)}>
+              {t('history.fillPromptHint')}
+            </button>
+          ) : null;
           return (
-            <div
-              className={`history-item status-${task.status} ${fillable ? 'prompt-fillable' : ''}`}
-              key={task.id}
-              role={fillable ? 'button' : undefined}
-              tabIndex={fillable ? 0 : undefined}
-              title={fillable ? t('history.fillPromptHint') : undefined}
-              onClick={(event) => onHistoryItemClick(event, task)}
-              onKeyDown={(event) => onHistoryItemKeyDown(event, task)}
-            >
+            <div className={`history-item status-${task.status}`} key={task.id}>
               <div className="history-item-head">
-                <span className="task-type">{t(TYPE_LABEL_KEY[task.type])}</span>
-                <span className={`status-badge ${task.status}`}>{t(STATUS_KEY[task.status])}</span>
-                {fillable && <span className="prompt-fill-hint">{t('history.fillPromptHint')}</span>}
-                {duration && (
-                  <span className="duration-badge" title={t('gallery.duration', { duration })}>
-                    <span className="duration-icon" aria-hidden="true">⏱</span>
-                    {duration}
-                  </span>
-                )}
+                <span className="history-item-tags">
+                  <span className="task-type">{t(TYPE_LABEL_KEY[task.type])}</span>
+                  <span className={`status-badge ${task.status}`}>{t(STATUS_KEY[task.status])}</span>
+                  {duration && (
+                    <span className="duration-badge" title={t('gallery.duration', { duration })}>
+                      <span className="duration-icon" aria-hidden="true">⏱</span>
+                      {duration}
+                    </span>
+                  )}
+                </span>
                 <span className="history-actions-inline">
                   {canRefresh && (
                     <button
@@ -380,9 +386,22 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
               </div>
 
               {prompt && (
-                <p className="history-prompt" title={prompt}>
-                  {prompt}
-                </p>
+                isLongPrompt ? (
+                  <button
+                    type="button"
+                    className="history-prompt history-prompt-button"
+                    onClick={() => openPrompt(prompt)}
+                    aria-label={t('history.promptOpen')}
+                    title={t('history.promptOpen')}
+                  >
+                    <span className="history-prompt-text">{prompt}</span>
+                    <span className="history-prompt-more">{t('history.promptMore')}</span>
+                  </button>
+                ) : (
+                  <p className="history-prompt" title={prompt}>
+                    {prompt}
+                  </p>
+                )
               )}
 
               {isActive && (
@@ -432,7 +451,9 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
                           fileName={downloadFileName(task, 'video')}
                           label={t('gallery.video.download')}
                           loadingLabel={t('gallery.downloading')}
+                          className="btn-secondary"
                         />
+                        {fillButton}
                       </div>
                     </>
                   ) : (
@@ -464,8 +485,9 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
                                 fileName={downloadFileName(task, 'image', i)}
                                 label={t('gallery.download')}
                                 loadingLabel={t('gallery.downloading')}
+                                className="btn-secondary"
                               />
-                              {size && <span className="history-size">{size}</span>}
+                              {i === 0 && fillButton}
                             </div>
                           </div>
                         );
@@ -473,6 +495,10 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
                     </div>
                   )}
                 </div>
+              )}
+
+              {!isDone && fillButton && (
+                <div className="gallery-actions">{fillButton}</div>
               )}
             </div>
           );
@@ -496,6 +522,36 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
               </button>
               <button className="btn-primary" type="button" onClick={confirmFill}>
                 {t('history.confirmOk')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {expandedPrompt && (
+        <div className="prompt-detail-backdrop" role="presentation" onClick={() => setExpandedPrompt(null)}>
+          <div
+            className="prompt-detail-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="prompt-detail-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="prompt-detail-head">
+              <strong id="prompt-detail-title">{t('history.promptTitle')}</strong>
+              <button
+                className="prompt-detail-close"
+                type="button"
+                onClick={() => setExpandedPrompt(null)}
+                aria-label={t('preview.close')}
+                title={t('preview.close')}
+              >
+                ×
+              </button>
+            </div>
+            <div className="prompt-detail-body">{expandedPrompt}</div>
+            <div className="prompt-detail-actions">
+              <button className="btn-secondary" type="button" onClick={copyExpandedPrompt}>
+                {promptCopied ? t('history.promptCopied') : t('history.promptCopy')}
               </button>
             </div>
           </div>

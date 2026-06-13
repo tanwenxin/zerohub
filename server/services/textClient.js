@@ -98,6 +98,25 @@ function mockContent(messages) {
     return 'A detailed scene generated from the uploaded image, main subject in sharp focus, rich background environment, cinematic realism, dramatic lighting, wide-angle composition, high visual density';
   }
   const text = typeof c === 'string' ? c : '';
+  // Prompt 完整度校验：识别评估请求，返回可解析的 JSON（根据文本长度粗略估算分值）
+  if (text.includes('评估以下提示词的完整度') || text.includes('评估以下提示词')) {
+    const body = text.split('\n').slice(1).join(' ').trim();
+    const wordCount = body.split(/[，,。\s]+/).filter(Boolean).length;
+    const score = Math.max(12, Math.min(96, wordCount * 7));
+    const level = score >= 80 ? 'strong' : score >= 50 ? 'fair' : 'weak';
+    const missing = score >= 80 ? [] : ['光照', '镜头角度', '构图'].slice(0, score >= 50 ? 1 : 3);
+    const suggestions =
+      score >= 80
+        ? ['描述已较完整，可直接生成']
+        : ['补充光照与氛围描述', '明确镜头角度与构图', '增加材质与细节密度关键词'].slice(0, score >= 50 ? 1 : 3);
+    return JSON.stringify({
+      score,
+      level,
+      missing,
+      suggestions,
+      summary: score >= 80 ? '提示词维度充分，可直接提交生成。' : '提示词较为简略，建议补全关键视觉维度。',
+    });
+  }
   return `${text}, main subject clearly defined, detailed environment, cinematic realism, dramatic lighting, wide-angle composition, ultra-detailed, high visual density`;
 }
 

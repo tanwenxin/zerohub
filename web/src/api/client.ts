@@ -195,6 +195,33 @@ export async function optimizePrompt(
   return res.json();
 }
 
+export type PromptCompletenessLevel = 'weak' | 'fair' | 'strong';
+
+export interface PromptCompleteness {
+  score: number;
+  level: PromptCompletenessLevel;
+  missing: string[];
+  suggestions: string[];
+  summary: string;
+}
+
+/**
+ * 调用文本模型评估提示词完整度，按当前生成模式规范返回结构化结果：
+ * 评分、薄弱/缺失维度、改进建议与一句话概述。
+ */
+export async function checkPromptCompleteness(
+  prompt: string,
+  mode: TaskType
+): Promise<PromptCompleteness> {
+  const res = await fetch('/api/text/prompt-completeness', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt, mode }),
+  });
+  if (!res.ok) await throwResponseError(res);
+  return res.json();
+}
+
 /**
  * 调用文本模型理解图片（https URL 或 data URI），结合用户已输入的 prompt（可选），
  * 返回符合当前生成模式规范的提示词。

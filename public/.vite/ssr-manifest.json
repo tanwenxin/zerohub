@@ -9,11 +9,11 @@
   "node_modules/prop-types/index.js": [],
   "node_modules/prop-types/lib/ReactPropTypesSecret.js": [],
   "node_modules/react-dom/cjs/react-dom-client.production.js": [
-    "/assets/client-C5_BiEY7.js"
+    "/assets/client-BsbP8O-X.js"
   ],
   "node_modules/react-dom/cjs/react-dom.production.js": [],
   "node_modules/react-dom/client.js": [
-    "/assets/client-C5_BiEY7.js"
+    "/assets/client-BsbP8O-X.js"
   ],
   "node_modules/react-dom/index.js": [],
   "node_modules/react-fast-compare/index.js": [],
@@ -25,10 +25,10 @@
   "node_modules/react/index.js": [],
   "node_modules/react/jsx-runtime.js": [],
   "node_modules/scheduler/cjs/scheduler.production.js": [
-    "/assets/client-C5_BiEY7.js"
+    "/assets/client-BsbP8O-X.js"
   ],
   "node_modules/scheduler/index.js": [
-    "/assets/client-C5_BiEY7.js"
+    "/assets/client-BsbP8O-X.js"
   ],
   "node_modules/shallowequal/index.js": [],
   "node_modules/vite-react-ssg/dist/index.mjs": [],
@@ -45,6 +45,7 @@
   "src/components/ImageUnderstandPanel.tsx": [],
   "src/components/MediaPreviewModal.tsx": [],
   "src/components/ProgressBar.tsx": [],
+  "src/components/PromptCompleteness.tsx": [],
   "src/components/PromptForm.tsx": [],
   "src/components/PromptOptimizeButton.tsx": [],
   "src/components/ResultGallery.tsx": [],
@@ -55,11 +56,25 @@
   "src/components/TasksDrawer.tsx": [],
   "src/components/Uploader.tsx": [],
   "src/components/VideoResult.tsx": [],
+  "src/components/ui/Badge.tsx": [],
+  "src/components/ui/Button.tsx": [],
+  "src/components/ui/Card.tsx": [],
+  "src/components/ui/Container.tsx": [],
+  "src/components/ui/Eyebrow.tsx": [],
+  "src/components/ui/Field.tsx": [],
+  "src/components/ui/Input.tsx": [],
+  "src/components/ui/Layout.tsx": [],
+  "src/components/ui/SegmentedControl.tsx": [],
+  "src/components/ui/index.ts": [],
+  "src/components/ui/ui.css": [],
   "src/hooks/useGeneration.ts": [],
   "src/i18n.ts": [],
   "src/index.css": [],
   "src/main.tsx": [],
   "src/pages/ContactPage.tsx": [],
+  "src/pages/DesignSystemPage.css": [],
+  "src/pages/DesignSystemPage.tsx": [],
+  "src/pages/HomePage.css": [],
   "src/pages/HomePage.tsx": [],
   "src/pages/ImageGenerate.tsx": [],
   "src/pages/NotFoundPage.tsx": [],

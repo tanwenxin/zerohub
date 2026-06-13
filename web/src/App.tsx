@@ -7,7 +7,6 @@ import { usePreferences } from './usePreferences';
 import { useTaskQueue } from './useTaskQueue';
 import { TasksDrawer } from './components/TasksDrawer';
 import { SiteFooter } from './components/SiteFooter';
-import { THEMES } from './theme';
 import type { TranslationKey } from './i18n';
 
 type RouteKey = 'home' | 'image' | 'video' | 'privacy' | 'terms' | 'contact' | 'notFound';
@@ -17,13 +16,6 @@ const NAV_ITEMS: { path: string; labelKey: TranslationKey; route: RouteKey }[] =
   { path: '/image', labelKey: 'nav.image', route: 'image' },
   { path: '/video', labelKey: 'nav.video', route: 'video' },
 ];
-
-const THEME_ICON: Record<(typeof THEMES)[number], string> = {
-  auto: '◐',
-  default: '✦',
-  light: '☀',
-  dark: '☾',
-};
 
 function normalizePath(pathname: string): string {
   return pathname.replace(/\/+$/, '') || '/';
@@ -49,12 +41,11 @@ function routeFromPath(pathname: string): RouteKey {
 }
 
 export default function App() {
-  const { language, setLanguage, theme, setTheme, t } = usePreferences();
+  const { language, setLanguage, t } = usePreferences();
   const { activeCount, maxActive } = useTaskQueue();
   const location = useLocation();
   const route = routeFromPath(location.pathname);
   const [health, setHealth] = useState<Health | null>(null);
-  const [controlsOpen, setControlsOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const meta = useMemo(() => {
@@ -86,105 +77,75 @@ export default function App() {
     void initializeBackgroundNotifications();
   }, []);
 
+  const apiReady = Boolean(health?.apiKeyConfigured);
   const healthLabel = health
-    ? health.apiKeyConfigured
-      ? 'API'
+    ? apiReady
+      ? t('health.ready')
       : t('health.noApiKey')
     : t('health.backendOffline');
 
   return (
-    <div className="app">
+    <div className="app app-shell">
       <Head>
         <title>{meta.title}</title>
         <meta name="description" content={meta.description} />
       </Head>
       <header className="topbar">
-        <div className="topbar-main">
-          <Link className="brand" to="/" onClick={() => setControlsOpen(false)}>
-            <span className="logo">✦</span>
-            {t('app.brand')}
+        <div className="ui-container topbar-inner">
+          <Link className="brand" to="/" aria-label={t('app.brand')}>
+            <span className="brand-mark" aria-hidden="true" />
+            <span className="brand-lockup">
+              <span className="brand-name">Agnes</span>
+              <span className="brand-tagline">Visual Intelligence</span>
+            </span>
           </Link>
-          <div className="topbar-nav-row">
-            <nav className="tabs" aria-label="Primary">
-              {NAV_ITEMS.map((item) => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  end={item.path === '/'}
-                  className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}
-                  onClick={() => setControlsOpen(false)}
-                >
-                  {t(item.labelKey)}
-                </NavLink>
-              ))}
-            </nav>
+
+          <nav className="nav" aria-label="Primary">
+            {NAV_ITEMS.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                end={item.path === '/'}
+                className={({ isActive }) => (isActive ? 'is-active' : '')}
+              >
+                {t(item.labelKey)}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="utility">
             <button
-              className="tasks-btn"
+              type="button"
+              className="nav-action"
+              onClick={() => setDrawerOpen(true)}
               aria-label={t('tasks.viewButton', { count: activeCount, max: maxActive })}
               title={t('tasks.viewButton', { count: activeCount, max: maxActive })}
-              onClick={() => {
-                setDrawerOpen(true);
-                setControlsOpen(false);
-              }}
             >
-              <span className="tasks-icon" aria-hidden="true">
-                📋
-              </span>
-              <span className="tasks-full">{t('tasks.viewButton', { count: activeCount, max: maxActive })}</span>
-              <span className="tasks-compact">
-                {activeCount}/{maxActive}
-              </span>
+              {activeCount}/{maxActive}
             </button>
             <button
               type="button"
-              className={`controls-menu-btn ${controlsOpen ? 'open' : ''}`}
-              aria-label={controlsOpen ? t('controls.close') : t('controls.menu')}
-              aria-expanded={controlsOpen}
-              aria-controls="mobile-controls-panel"
-              onClick={() => setControlsOpen((open) => !open)}
+              className="nav-action"
+              onClick={() => setLanguage(language === 'zh' ? 'en' : 'zh')}
+              title={t('language.label')}
+              aria-label={t('language.label')}
             >
-              <span />
-              <span />
-              <span />
-            </button>
-          </div>
-        </div>
-
-        <div id="mobile-controls-panel" className={`topbar-controls ${controlsOpen ? 'open' : ''}`}>
-          <div className="controls-panel-title">{t('controls.title')}</div>
-          <label className="pref-control">
-            <span className="pref-icon" aria-hidden="true">
-              {THEME_ICON[theme]}
-            </span>
-            <select
-              name="theme"
-              value={theme}
-              onChange={(e) => setTheme(e.target.value as typeof theme)}
-              aria-label={t('theme.label')}
-            >
-              {THEMES.map((item) => (
-                <option key={item} value={item}>
-                  {t(`theme.${item}` as TranslationKey)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="button"
-            className="pref-control pref-button"
-            onClick={() => setLanguage(language === 'zh' ? 'en' : 'zh')}
-            title={t('language.label')}
-            aria-label={t('language.label')}
-          >
-            <span className="pref-icon" aria-hidden="true">
               {language === 'zh' ? '中' : 'EN'}
-            </span>
-          </button>
-          <div className="health" title={healthLabel} aria-label={healthLabel}>
-            <span className={`dot ${health?.apiKeyConfigured ? 'ok' : 'warn'}`} />
+            </button>
+            <span
+              className={`status-dot ${apiReady ? 'ok' : 'warn'}`}
+              title={healthLabel}
+              aria-label={healthLabel}
+            />
           </div>
         </div>
       </header>
+
+      <div className="marquee" aria-hidden="true">
+        <span>AGNES · VISUAL INTELLIGENCE ATELIER · CALIBRATE · GENERATE · REFINE · </span>
+        <span>AGNES · VISUAL INTELLIGENCE ATELIER · CALIBRATE · GENERATE · REFINE · </span>
+        <span>AGNES · VISUAL INTELLIGENCE ATELIER · CALIBRATE · GENERATE · REFINE · </span>
+      </div>
 
       <main>
         <Outlet />

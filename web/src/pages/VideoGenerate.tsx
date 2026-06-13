@@ -3,7 +3,9 @@ import { Uploader } from '../components/Uploader';
 import { TaskHistory } from '../components/TaskHistory';
 import { SubmitFeedback } from '../components/SubmitFeedback';
 import { PromptOptimizeButton } from '../components/PromptOptimizeButton';
+import { PromptCompleteness } from '../components/PromptCompleteness';
 import { ImageUnderstandPanel } from '../components/ImageUnderstandPanel';
+import { Eyebrow, SegmentedControl } from '../components/ui';
 import { useTaskQueue } from '../useTaskQueue';
 import {
   DEFAULT_VIDEO_SIZE,
@@ -196,24 +198,31 @@ export function VideoGenerate() {
   return (
     <div className="page">
       <div className="panel">
+        <Eyebrow>{t('video.eyebrow')}</Eyebrow>
         <h2>{t('page.video.title')}</h2>
         <section className="landing-intro" aria-label={t('videoLanding.title')}>
           <p className="eyebrow">{t('videoLanding.title')}</p>
           <p>{t('videoLanding.body')}</p>
           <p>{t('videoLanding.disclosure')}</p>
         </section>
+
+        <div className="method-line" aria-label={t('video.eyebrow')}>
+          <span>{t('video.method.plan')}</span>
+          <span>{t('video.method.trace')}</span>
+          <span>{t('video.method.review')}</span>
+        </div>
+
         <p className="desc">{t('page.video.desc')}</p>
 
-        <label className="field">
+        <div className="field">
           <span>{t('video.mode')}</span>
-          <select value={mode} onChange={(e) => onVideoModeChange(e.target.value as VideoTaskType)}>
-            {MODES.map((m) => (
-              <option key={m.value} value={m.value}>
-                {t(m.labelKey)}
-              </option>
-            ))}
-          </select>
-        </label>
+          <SegmentedControl<VideoTaskType>
+            ariaLabel={t('video.mode')}
+            value={mode}
+            onChange={onVideoModeChange}
+            options={MODES.map((m) => ({ value: m.value, label: t(m.labelKey) }))}
+          />
+        </div>
 
         {needsImage && (
           <>
@@ -223,6 +232,12 @@ export function VideoGenerate() {
               onFilesChange={setFiles}
               onUrlsChange={setUrls}
               maxItems={mode === 'img2vid' ? 1 : 8}
+              variant="slots"
+              note={
+                <span className={`badge ${enoughImages ? 'ok' : 'warn'}`}>
+                  {t('asset.noteRequired', { count: minImages })}
+                </span>
+              }
             />
             <ImageUnderstandPanel
               files={files}
@@ -246,6 +261,8 @@ export function VideoGenerate() {
             <PromptOptimizeButton prompt={prompt} mode={mode} onOptimized={setPrompt} />
           </div>
         </label>
+
+        <PromptCompleteness prompt={prompt} mode={mode} />
 
         <label className="field">
           <span>{t('video.negativePrompt')}</span>

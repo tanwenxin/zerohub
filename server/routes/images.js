@@ -30,6 +30,7 @@ const queue = new RequestQueue({
 });
 
 const VALID_TYPES = ['text2img', 'img2img', 'multi'];
+const VALID_RESPONSE_FORMATS = ['url', 'b64_json'];
 
 // 同进程内保存任务的完整输入（含上传图片的 data URI），供「刷新→重试」复用；
 // 持久化文件中不含 base64，重启后该缓存丢失，刷新将退化为用 URL 参数重跑。
@@ -59,6 +60,20 @@ function collectImages(req) {
     }
   }
   return images;
+}
+
+function isValidSize(value) {
+  if (value === undefined || value === null || value === '') return true;
+  if (typeof value !== 'string') return false;
+  const match = /^(\d+)\s*[xX]\s*(\d+)$/.exec(value.trim());
+  if (!match) return false;
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  return Number.isSafeInteger(width) && Number.isSafeInteger(height) && width > 0 && height > 0;
+}
+
+function isValidResponseFormat(value) {
+  return value === undefined || value === null || value === '' || VALID_RESPONSE_FORMATS.includes(value);
 }
 
 /**
@@ -169,6 +184,12 @@ router.post('/generate', upload.array('images', 8), (req, res) => {
   if (!prompt || !prompt.trim()) {
     return res.status(400).json({ error: 'prompt 不能为空' });
   }
+  if (!isValidSize(size)) {
+    return res.status(400).json({ error: 'size 非法，应为正整数尺寸，如 1024x1024' });
+  }
+  if (!isValidResponseFormat(responseFormat)) {
+    return res.status(400).json({ error: `responseFormat 非法，应为 ${VALID_RESPONSE_FORMATS.join('/')}` });
+  }
 
   let urlList = [];
   let image = [];
@@ -203,7 +224,7 @@ router.post('/generate', upload.array('images', 8), (req, res) => {
     prompt: prompt.trim(),
     size: sizeInfo.size,
     image,
-    responseFormat: responseFormat === 'b64_json' ? 'b64_json' : 'url',
+    responseFormat: responseFormat || 'url',
   };
   if (sizeInfo.adjusted) {
     logger.info('request.size_adjusted', { type, original: sizeInfo.original, adjusted: sizeInfo.size });

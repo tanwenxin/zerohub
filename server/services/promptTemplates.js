@@ -115,6 +115,37 @@ function buildUnderstandMessages(mode, imageInput, userPrompt) {
   ];
 }
 
+/**
+ * 构造「Prompt 完整度校验」的 messages：
+ * 让文本模型按当前生成模式规范，评估用户 Prompt 的完整度，并给出可执行的改进建议。
+ * 要求模型只输出严格 JSON，便于前端稳定解析与展示。
+ * @param {string} mode 具体生成模式
+ * @param {string} userPrompt 用户当前提示词
+ */
+function buildCompletenessMessages(mode, userPrompt) {
+  const isVideo = VIDEO_MODES.includes(mode);
+  const dimensions = isVideo
+    ? '主体、动作/运动、场景或环境、镜头运动、光照、视觉风格、负向约束'
+    : '主体、场景或环境、视觉风格、光照、镜头角度、构图、细节密度';
+  const system = [
+    `你是${roleFor(mode)}，负责评估用户提示词的完整度并给出改进建议。`,
+    '请基于下述模式规范进行评估：',
+    MODE_SPEC[mode],
+    `评估维度参考：${dimensions}。`,
+    '评分标准：score 为 0-100 的整数，覆盖维度越完整、描述越具体，分数越高；',
+    'level 取值：weak（薄弱，<50）、fair（一般，50-79）、strong（充分，≥80）。',
+    'missing：列出仍然缺失或描述过弱的关键维度（中文短语，最多 4 项；若无则为空数组）。',
+    'suggestions：给出 1-3 条具体、可执行的改进建议（中文，每条不超过 30 字）。',
+    'summary：用一句话（不超过 40 字）概括当前提示词的完整度与主要问题。',
+    '严格只输出一个 JSON 对象，不要使用 markdown 代码块或任何额外说明，格式如下：',
+    '{"score": <int>, "level": "weak|fair|strong", "missing": ["..."], "suggestions": ["..."], "summary": "..."}',
+  ].join('\n');
+  return [
+    { role: 'system', content: system },
+    { role: 'user', content: `请评估以下提示词的完整度：\n${String(userPrompt || '')}` },
+  ];
+}
+
 module.exports = {
   IMAGE_MODES,
   VIDEO_MODES,
@@ -122,4 +153,5 @@ module.exports = {
   isValidMode,
   buildOptimizeMessages,
   buildUnderstandMessages,
+  buildCompletenessMessages,
 };

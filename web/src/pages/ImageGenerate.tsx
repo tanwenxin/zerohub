@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { PromptForm } from '../components/PromptForm';
 import { Uploader } from '../components/Uploader';
 import { PromptOptimizeButton } from '../components/PromptOptimizeButton';
+import { PromptCompleteness } from '../components/PromptCompleteness';
 import { ImageUnderstandPanel } from '../components/ImageUnderstandPanel';
 import { SubmitFeedback } from '../components/SubmitFeedback';
 import { TaskHistory } from '../components/TaskHistory';
+import { Eyebrow, SegmentedControl } from '../components/ui';
 import { useTaskQueue } from '../useTaskQueue';
 import {
   DEFAULT_IMAGE_SIZE,
@@ -129,6 +131,20 @@ export function ImageGenerate() {
     saveImageSizePreference(nextSize);
   }
 
+  // 模式切换：切到「图生图」（仅允许 1 张参考图）时，保留第一张、清空其余，
+  // 避免把多图模式下上传的多张图片继续带过去。
+  function onModeChange(nextMode: ImageTaskType) {
+    if (nextMode === 'img2img') {
+      if (files.length > 0) {
+        setFiles(files.slice(0, 1));
+        setUrls([]);
+      } else if (urls.length > 0) {
+        setUrls(urls.slice(0, 1));
+      }
+    }
+    setMode(nextMode);
+  }
+
   function onSizePreferenceClear() {
     clearImageSizePreference();
     setSize(DEFAULT_IMAGE_SIZE);
@@ -157,22 +173,28 @@ export function ImageGenerate() {
   return (
     <div className="page">
       <div className="panel">
+        <Eyebrow>{t('image.eyebrow')}</Eyebrow>
         <h2>{t('page.image.title')}</h2>
         <section className="landing-intro" aria-label={t('imageLanding.title')}>
           <p className="eyebrow">{t('imageLanding.title')}</p>
           <p>{t('imageLanding.body')}</p>
         </section>
 
-        <label className="field">
+        <div className="method-line" aria-label={t('image.eyebrow')}>
+          <span>{t('image.method.calibrate')}</span>
+          <span>{t('image.method.reveal')}</span>
+          <span>{t('image.method.recall')}</span>
+        </div>
+
+        <div className="field">
           <span>{t('image.mode')}</span>
-          <select value={mode} onChange={(e) => setMode(e.target.value as ImageTaskType)}>
-            {MODES.map((m) => (
-              <option key={m.value} value={m.value}>
-                {t(m.labelKey)}
-              </option>
-            ))}
-          </select>
-        </label>
+          <SegmentedControl<ImageTaskType>
+            ariaLabel={t('image.mode')}
+            value={mode}
+            onChange={onModeChange}
+            options={MODES.map((m) => ({ value: m.value, label: t(m.labelKey) }))}
+          />
+        </div>
 
         <p className="desc">{t(descKey)}</p>
 
@@ -184,6 +206,12 @@ export function ImageGenerate() {
               onFilesChange={setFiles}
               onUrlsChange={setUrls}
               maxItems={mode === 'img2img' ? 1 : 8}
+              variant="slots"
+              note={
+                <span className={`badge ${enoughImages ? 'ok' : 'warn'}`}>
+                  {t('asset.noteRequired', { count: minImages })}
+                </span>
+              }
             />
             <ImageUnderstandPanel
               files={files}
@@ -221,6 +249,8 @@ export function ImageGenerate() {
           onSizePreferenceClear={onSizePreferenceClear}
           onSizeValidChange={setSizeValid}
         />
+
+        <PromptCompleteness prompt={prompt} mode={mode} />
 
         <button
           className={`btn-primary btn-block generate-submit-btn ${accepted ? 'accepted' : ''} ${submitLocked ? 'locked' : ''}`}

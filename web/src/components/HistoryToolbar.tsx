@@ -1,46 +1,32 @@
 import { usePreferences } from '../usePreferences';
 
-export type HistoryLayout = 'list' | 'masonry';
 export type HistoryStatusFilter = 'all' | 'active' | 'done' | 'error';
 export type HistorySort = 'newest' | 'oldest';
 
 interface HistoryToolbarProps {
-  visibleCount: number;
-  totalCount: number;
   searchText: string;
   filtering: boolean;
   statusFilter: HistoryStatusFilter;
   sortOrder: HistorySort;
-  layout: HistoryLayout;
   onSearchTextChange: (value: string) => void;
   onStatusFilterChange: (value: HistoryStatusFilter) => void;
   onSortOrderChange: (value: HistorySort) => void;
-  onLayoutChange: (value: HistoryLayout) => void;
 }
 
 export function HistoryToolbar({
-  visibleCount,
-  totalCount,
   searchText,
   filtering,
   statusFilter,
   sortOrder,
-  layout,
   onSearchTextChange,
   onStatusFilterChange,
   onSortOrderChange,
-  onLayoutChange,
 }: HistoryToolbarProps) {
   const { t } = usePreferences();
 
   return (
     <div className="history-head history-head-rich">
       <div className="history-tools">
-        <div className="history-count-badge" aria-label={t('history.count', { count: visibleCount })}>
-          <span className="history-count-icon" aria-hidden="true">◆</span>
-          <span>{t('history.count', { count: visibleCount })}</span>
-          {visibleCount !== totalCount && <span className="history-total">/ {totalCount}</span>}
-        </div>
         <label className="history-search">
           <span className="history-search-icon" aria-hidden="true">⌘</span>
           <input
@@ -83,28 +69,6 @@ export function HistoryToolbar({
               <option value="oldest">{t('history.sortOldest')}</option>
             </select>
           </label>
-        </div>
-        <div className="layout-toggle" role="group" aria-label={t('history.layoutLabel')}>
-          <button
-            className={layout === 'list' ? 'active' : ''}
-            type="button"
-            onClick={() => onLayoutChange('list')}
-            aria-pressed={layout === 'list'}
-            title={t('history.layoutList')}
-          >
-            <span aria-hidden="true">☰</span>
-            <span className="layout-toggle-text">{t('history.layoutList')}</span>
-          </button>
-          <button
-            className={layout === 'masonry' ? 'active' : ''}
-            type="button"
-            onClick={() => onLayoutChange('masonry')}
-            aria-pressed={layout === 'masonry'}
-            title={t('history.layoutMasonry')}
-          >
-            <span aria-hidden="true">▦</span>
-            <span className="layout-toggle-text">{t('history.layoutMasonry')}</span>
-          </button>
         </div>
       </div>
     </div>

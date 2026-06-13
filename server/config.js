@@ -49,6 +49,15 @@ const config = {
     mockFailRate: Number(process.env.AGNES_MOCK_FAIL_RATE) || 0,
   },
 
+  // 文本模型（Agnes 2.0 Flash，OpenAI 兼容）：用于提示词优化、图片理解、Prompt 完整度校验
+  text: {
+    endpoint: process.env.AGNES_TEXT_ENDPOINT || '/v1/chat/completions',
+    model: process.env.AGNES_TEXT_MODEL || 'agnes-2.0-flash',
+    requestTimeoutMs: int('TEXT_REQUEST_TIMEOUT_MS', 60000),
+    maxTokens: int('TEXT_MAX_TOKENS', 1024),
+    temperature: Number(process.env.TEXT_TEMPERATURE) || 0.7,
+  },
+
   // 视频生成（Agnes Video V2.0）配置
   video: {
     createEndpoint: process.env.AGNES_VIDEO_ENDPOINT || '/v1/videos',
