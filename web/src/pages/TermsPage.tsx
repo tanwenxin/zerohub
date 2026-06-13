@@ -25,6 +25,11 @@ export function TermsPage() {
       </section>
 
       <section>
+        <h2>{t('terms.moderation.title')}</h2>
+        <p>{t('terms.moderation.body')}</p>
+      </section>
+
+      <section>
         <h2>{t('terms.output.title')}</h2>
         <p>{t('terms.output.body')}</p>
       </section>

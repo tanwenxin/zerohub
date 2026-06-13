@@ -7,9 +7,14 @@ import { usePreferences } from './usePreferences';
 import { useTaskQueue } from './useTaskQueue';
 import { TasksDrawer } from './components/TasksDrawer';
 import { SiteFooter } from './components/SiteFooter';
+import { CookieConsentBanner } from './components/CookieConsentBanner';
+import { AdsenseScript } from './components/AdsenseScript';
 import type { TranslationKey } from './i18n';
+import { getSeoLandingPageByPath } from './seoLandingPages';
 
-type RouteKey = 'home' | 'image' | 'video' | 'privacy' | 'terms' | 'contact' | 'notFound';
+type RouteKey = 'home' | 'image' | 'video' | 'guides' | 'about' | 'privacy' | 'terms' | 'contact' | 'notFound';
+
+const SITE_URL = (import.meta.env.VITE_SITE_URL || 'https://agnes-image-studio.xyz').replace(/\/+$/, '');
 
 const NAV_ITEMS: { path: string; labelKey: TranslationKey; route: RouteKey }[] = [
   { path: '/', labelKey: 'nav.home', route: 'home' },
@@ -29,6 +34,13 @@ function routeFromPath(pathname: string): RouteKey {
       return 'image';
     case '/video':
       return 'video';
+    case '/guides':
+    case '/guides/prompt':
+    case '/guides/commercial-use':
+    case '/guides/safety':
+      return 'guides';
+    case '/about':
+      return 'about';
     case '/privacy':
       return 'privacy';
     case '/terms':
@@ -45,14 +57,27 @@ export default function App() {
   const { activeCount, maxActive } = useTaskQueue();
   const location = useLocation();
   const route = routeFromPath(location.pathname);
+  const seoLandingPage = getSeoLandingPageByPath(location.pathname);
   const [health, setHealth] = useState<Health | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const meta = useMemo(() => {
+    if (seoLandingPage) {
+      const content = seoLandingPage.content[language];
+      return {
+        title: content.title,
+        description: content.description,
+        keywords: seoLandingPage.keywords.join(', '),
+        robots: 'index,follow',
+      };
+    }
+
     const byRoute: Record<RouteKey, { titleKey: TranslationKey; descriptionKey: TranslationKey }> = {
       home: { titleKey: 'meta.home.title', descriptionKey: 'meta.home.description' },
       image: { titleKey: 'meta.image.title', descriptionKey: 'meta.image.description' },
       video: { titleKey: 'meta.video.title', descriptionKey: 'meta.video.description' },
+      guides: { titleKey: 'meta.guides.title', descriptionKey: 'meta.guides.description' },
+      about: { titleKey: 'meta.about.title', descriptionKey: 'meta.about.description' },
       privacy: { titleKey: 'meta.privacy.title', descriptionKey: 'meta.privacy.description' },
       terms: { titleKey: 'meta.terms.title', descriptionKey: 'meta.terms.description' },
       contact: { titleKey: 'meta.contact.title', descriptionKey: 'meta.contact.description' },
@@ -62,8 +87,40 @@ export default function App() {
     return {
       title: t(selected.titleKey),
       description: t(selected.descriptionKey),
+      keywords: '',
+      robots: route === 'notFound' ? 'noindex,follow' : 'index,follow',
     };
-  }, [route, t]);
+  }, [language, route, seoLandingPage, t]);
+
+  const canonicalPath = seoLandingPage ? seoLandingPage.path : normalizePath(location.pathname);
+  const canonicalUrl = `${SITE_URL}${canonicalPath === '/' ? '/' : canonicalPath}`;
+  const structuredData = useMemo(() => {
+    if (seoLandingPage) {
+      const content = seoLandingPage.content[language];
+      return {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: content.faqs.map((faq) => ({
+          '@type': 'Question',
+          name: faq.question,
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: faq.answer,
+          },
+        })),
+      };
+    }
+
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'WebApplication',
+      name: t('app.brand'),
+      applicationCategory: 'MultimediaApplication',
+      operatingSystem: 'Web',
+      url: canonicalUrl,
+      description: meta.description,
+    };
+  }, [canonicalUrl, language, meta.description, seoLandingPage, t]);
 
   useEffect(() => {
     const load = () => getHealth().then(setHealth).catch(() => setHealth(null));
@@ -89,6 +146,18 @@ export default function App() {
       <Head>
         <title>{meta.title}</title>
         <meta name="description" content={meta.description} />
+        {meta.keywords ? <meta name="keywords" content={meta.keywords} /> : null}
+        <meta name="robots" content={meta.robots} />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:type" content={seoLandingPage ? 'article' : 'website'} />
+        <meta property="og:site_name" content={t('app.brand')} />
+        <meta property="og:title" content={meta.title} />
+        <meta property="og:description" content={meta.description} />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content={meta.title} />
+        <meta name="twitter:description" content={meta.description} />
+        <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
       </Head>
       <header className="topbar">
         <div className="ui-container topbar-inner">
@@ -96,7 +165,7 @@ export default function App() {
             <span className="brand-mark" aria-hidden="true" />
             <span className="brand-lockup">
               <span className="brand-name">Agnes</span>
-              <span className="brand-tagline">Visual Intelligence</span>
+              <span className="brand-tagline">Frame Studio</span>
             </span>
           </Link>
 
@@ -142,9 +211,9 @@ export default function App() {
       </header>
 
       <div className="marquee" aria-hidden="true">
-        <span>AGNES · VISUAL INTELLIGENCE ATELIER · CALIBRATE · GENERATE · REFINE · </span>
-        <span>AGNES · VISUAL INTELLIGENCE ATELIER · CALIBRATE · GENERATE · REFINE · </span>
-        <span>AGNES · VISUAL INTELLIGENCE ATELIER · CALIBRATE · GENERATE · REFINE · </span>
+        <span>AGNES FRAME STUDIO · CALIBRATE · DEVELOP · REUSE · </span>
+        <span>AGNES FRAME STUDIO · CALIBRATE · DEVELOP · REUSE · </span>
+        <span>AGNES FRAME STUDIO · CALIBRATE · DEVELOP · REUSE · </span>
       </div>
 
       <main>
@@ -154,6 +223,8 @@ export default function App() {
       <SiteFooter wide={route === 'image' || route === 'video'} />
 
       <TasksDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <CookieConsentBanner />
+      <AdsenseScript />
     </div>
   );
 }

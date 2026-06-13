@@ -27,10 +27,10 @@ function currentLogFile() {
 
 function write(level, event, context = {}) {
   const entry = {
+    ...context,
     time: new Date().toISOString(),
     level,
     event,
-    ...context,
   };
   const line = JSON.stringify(entry);
 

@@ -2,6 +2,7 @@
 
 const axios = require('axios');
 const config = require('../config');
+const { extractUpstreamErrorMessage } = require('../utils/upstreamError');
 
 /**
  * Agnes Video V2.0 接口封装。
@@ -118,38 +119,39 @@ function normalizeError(err) {
     const status = err.response.status;
     e.status = status;
     e.data = err.response.data;
+    e.upstreamMessage = extractUpstreamErrorMessage(err.response.data);
     const retryAfterMs = parseRetryAfter(err.response.headers);
     if (retryAfterMs != null) e.retryAfterMs = retryAfterMs;
 
     if (status === 503) {
       e.code = 'UPSTREAM_UNAVAILABLE';
       e.retryable = true;
-      e.userMessage = '视频服务繁忙，正在自动重试，请稍候…';
+      e.userMessage = e.upstreamMessage || '视频服务繁忙，正在自动重试，请稍候…';
       e.message = '上游视频服务暂时不可用（HTTP 503）';
     } else if (status === 429) {
       e.code = 'RATE_LIMITED';
       e.retryable = true;
-      e.userMessage = '请求过于频繁，正在自动重试，请稍候…';
+      e.userMessage = e.upstreamMessage || '请求过于频繁，正在自动重试，请稍候…';
       e.message = '触发上游限流（HTTP 429）';
     } else if (status >= 500) {
       e.code = 'UPSTREAM_ERROR';
       e.retryable = true;
-      e.userMessage = '视频服务暂时异常，正在自动重试，请稍候…';
+      e.userMessage = e.upstreamMessage || '视频服务暂时异常，正在自动重试，请稍候…';
       e.message = `上游服务错误（HTTP ${status}）`;
     } else if (status === 401 || status === 403) {
       e.code = 'AUTH_ERROR';
       e.retryable = false;
-      e.userMessage = '鉴权失败，请检查 API Key 配置';
+      e.userMessage = e.upstreamMessage || '鉴权失败，请检查 API Key 配置';
       e.message = `鉴权失败（HTTP ${status}）`;
     } else if (status === 404) {
       e.code = 'NOT_FOUND';
       e.retryable = false;
-      e.userMessage = '任务或视频不存在';
+      e.userMessage = e.upstreamMessage || '任务或视频不存在';
       e.message = '任务或视频不存在（HTTP 404）';
     } else {
       e.code = 'REQUEST_ERROR';
       e.retryable = false;
-      e.userMessage = '请求未能完成，请调整参数后重试';
+      e.userMessage = e.upstreamMessage || '请求未能完成，请调整参数后重试';
       e.message = `Agnes Video API 错误 HTTP ${status}`;
     }
   } else if (err.code === 'ECONNABORTED') {

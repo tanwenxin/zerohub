@@ -7,6 +7,7 @@ const textClient = require('../services/textClient');
 const logger = require('../services/logger');
 const { keyPool } = require('../services/keyPool');
 const { isValidImageInput } = require('../utils/image');
+const { assertGenerationTextAllowed } = require('../services/contentModeration');
 const {
   isValidMode,
   ALL_MODES,
@@ -42,6 +43,41 @@ function ensureApiConfigured(res) {
 }
 
 /**
+ * 文本模型调用专用：遇到上游 429 时冷却当前 key，并重新从 keyPool 获取下一个 key。
+ * 图片/视频生成仍保持一次任务固定 key，不走这里。
+ */
+async function chatWithTextKeyRotation(messages, meta = {}) {
+  const maxAttempts = Math.max(1, keyPool.keyCount);
+  let lastErr = null;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const apiKey = await keyPool.acquire('text');
+    const keyIndex = keyPool.keys.indexOf(apiKey);
+    try {
+      const result = await textClient.chat({ messages }, { apiKey });
+      if (attempt > 1) {
+        logger.info('text.key_rotation_recovered', { ...meta, attempt, keyIndex });
+      }
+      return result;
+    } catch (err) {
+      lastErr = err;
+      const limited = err.status === 429 || err.code === 'RATE_LIMITED';
+      if (!limited) throw err;
+      keyPool.markLimited(apiKey, 'text', err.retryAfterMs);
+      logger.warn('text.key_rotation_retry', {
+        ...meta,
+        attempt,
+        keyIndex,
+        retryAfterMs: err.retryAfterMs || null,
+      });
+      if (attempt >= maxAttempts) break;
+    }
+  }
+
+  throw lastErr || new Error('文本模型调用失败');
+}
+
+/**
  * POST /api/text/optimize-prompt
  * body: { prompt: string, mode: 'text2img'|'img2img'|'multi'|'text2vid'|'img2vid'|'multivid'|'keyframes' }
  * 同步返回 { prompt: <符合该模式规范的提示词> }
@@ -52,6 +88,11 @@ router.post('/text/optimize-prompt', async (req, res) => {
   const { prompt, mode } = req.body || {};
   if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
     return sendDirectError(res, { status: 400, code: 'REQUEST_ERROR', message: 'prompt 不能为空' });
+  }
+  try {
+    assertGenerationTextAllowed({ prompt });
+  } catch (err) {
+    return sendDirectError(res, err);
   }
   if (!isValidMode(mode)) {
     return sendDirectError(res, {
@@ -64,12 +105,18 @@ router.post('/text/optimize-prompt', async (req, res) => {
   const messages = buildOptimizeMessages(mode, prompt.trim());
 
   try {
-    const apiKey = await keyPool.acquire('text');
-    const optimized = await textClient.chat({ messages }, { apiKey });
+    const optimized = await chatWithTextKeyRotation(messages, { action: 'optimize', mode });
     logger.info('text.optimize.completed', { mode });
     return res.json({ prompt: optimized });
   } catch (err) {
-    logger.error('text.optimize.failed', { mode, code: err.code || null, message: err.message });
+    logger.error('text.optimize.failed', {
+      mode,
+      code: err.code || null,
+      status: err.status || null,
+      message: err.message,
+      userMessage: err.userMessage || null,
+      upstreamMessage: err.upstreamMessage || null,
+    });
     return sendDirectError(res, err);
   }
 });
@@ -104,15 +151,26 @@ router.post('/text/understand-image', async (req, res) => {
   }
 
   const userPrompt = typeof prompt === 'string' ? prompt : '';
+  try {
+    assertGenerationTextAllowed({ prompt: userPrompt });
+  } catch (err) {
+    return sendDirectError(res, err);
+  }
   const messages = buildUnderstandMessages(mode, imageInput, userPrompt);
 
   try {
-    const apiKey = await keyPool.acquire('text');
-    const result = await textClient.chat({ messages }, { apiKey });
+    const result = await chatWithTextKeyRotation(messages, { action: 'understand', mode });
     logger.info('text.understand.completed', { mode });
     return res.json({ result });
   } catch (err) {
-    logger.error('text.understand.failed', { mode, code: err.code || null, message: err.message });
+    logger.error('text.understand.failed', {
+      mode,
+      code: err.code || null,
+      status: err.status || null,
+      message: err.message,
+      userMessage: err.userMessage || null,
+      upstreamMessage: err.upstreamMessage || null,
+    });
     return sendDirectError(res, err);
   }
 });
@@ -175,6 +233,11 @@ router.post('/text/prompt-completeness', async (req, res) => {
   if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
     return sendDirectError(res, { status: 400, code: 'REQUEST_ERROR', message: 'prompt 不能为空' });
   }
+  try {
+    assertGenerationTextAllowed({ prompt });
+  } catch (err) {
+    return sendDirectError(res, err);
+  }
   if (!isValidMode(mode)) {
     return sendDirectError(res, {
       status: 400,
@@ -186,8 +249,7 @@ router.post('/text/prompt-completeness', async (req, res) => {
   const messages = buildCompletenessMessages(mode, prompt.trim());
 
   try {
-    const apiKey = await keyPool.acquire('text');
-    const raw = await textClient.chat({ messages }, { apiKey });
+    const raw = await chatWithTextKeyRotation(messages, { action: 'completeness', mode });
     const parsed = parseCompleteness(raw);
     if (!parsed) {
       return sendDirectError(res, {
@@ -200,7 +262,14 @@ router.post('/text/prompt-completeness', async (req, res) => {
     logger.info('text.completeness.completed', { mode, score: parsed.score, level: parsed.level });
     return res.json(parsed);
   } catch (err) {
-    logger.error('text.completeness.failed', { mode, code: err.code || null, message: err.message });
+    logger.error('text.completeness.failed', {
+      mode,
+      code: err.code || null,
+      status: err.status || null,
+      message: err.message,
+      userMessage: err.userMessage || null,
+      upstreamMessage: err.upstreamMessage || null,
+    });
     return sendDirectError(res, err);
   }
 });

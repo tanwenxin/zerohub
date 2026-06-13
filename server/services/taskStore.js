@@ -157,7 +157,7 @@ class TaskStore {
    * 创建任务。
    * @param {string} type 生成类型
    * @param {object} payloadPreview 诊断预览
-   * @param {object} [meta] 额外元信息：{ category, status, params }
+   * @param {object} [meta] 额外元信息：{ category, status, params, ownerId }
    */
   create(type, payloadPreview, meta = {}) {
     const id = crypto.randomUUID();
@@ -166,6 +166,7 @@ class TaskStore {
       id,
       type,
       category: meta.category || 'image', // image | video
+      ownerId: meta.ownerId || null,
       status: meta.status || 'pending', // pending -> queued -> running -> done|error
       progress: 0,
       createdAt: now,
@@ -190,9 +191,10 @@ class TaskStore {
     return this._tasks.get(id) || null;
   }
 
-  /** 返回任务列表（按更新时间倒序），可选按 category 过滤与数量限制 */
-  list({ category, limit = 100 } = {}) {
+  /** 返回任务列表（按更新时间倒序），可选按 ownerId/category 过滤与数量限制 */
+  list({ ownerId, category, limit = 100 } = {}) {
     let arr = Array.from(this._tasks.values());
+    if (ownerId) arr = arr.filter((t) => t.ownerId === ownerId);
     if (category) arr = arr.filter((t) => t.category === category);
     arr.sort((a, b) => b.updatedAt - a.updatedAt);
     return arr.slice(0, limit);

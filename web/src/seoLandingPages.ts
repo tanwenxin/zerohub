@@ -1,0 +1,511 @@
+import type { Language } from './i18n';
+
+export type SeoLandingSlug =
+  | 'ai-image-generator'
+  | 'text-to-image'
+  | 'image-to-image'
+  | 'multi-image-composition'
+  | 'ai-video-generator'
+  | 'image-to-video'
+  | 'keyframe-animation'
+  | 'prompt-optimizer'
+  | 'image-to-prompt';
+
+export interface SeoLandingPageContent {
+  title: string;
+  description: string;
+  eyebrow: string;
+  h1: string;
+  lead: string;
+  primaryCta: string;
+  secondaryCta: string;
+  sections: {
+    title: string;
+    body: string;
+  }[];
+  useCases: string[];
+  faqs: {
+    question: string;
+    answer: string;
+  }[];
+}
+
+export interface SeoLandingPage {
+  slug: SeoLandingSlug;
+  path: string;
+  toolPath: '/image' | '/video';
+  priority: string;
+  changefreq: 'weekly' | 'monthly';
+  keywords: string[];
+  content: Record<Language, SeoLandingPageContent>;
+}
+
+export const SEO_LANDING_PAGES: SeoLandingPage[] = [
+  {
+    slug: 'ai-image-generator',
+    path: '/ai-image-generator',
+    toolPath: '/image',
+    priority: '0.86',
+    changefreq: 'weekly',
+    keywords: ['AI 图片生成器', 'AI image generator', '文生图', '图生图', '多图合成'],
+    content: {
+      zh: {
+        title: 'AI 图片生成器 - 文生图、图生图与多图合成 | Agnes 显影室',
+        description: 'Agnes 显影室提供 AI 图片生成工作台，支持文生图、图生图、多图合成、Prompt 优化、图片理解、本地历史与结果下载。',
+        eyebrow: 'AI IMAGE GENERATOR',
+        h1: 'AI 图片生成器：从 prompt、参考图到可复用视觉草图',
+        lead: '用文字、单张参考图或多张素材创建图片，并在同一个工作台里完成提示词优化、任务排队、预览下载和历史回填。',
+        primaryCta: '开始生成图片',
+        secondaryCta: '查看视频生成',
+        sections: [
+          {
+            title: '覆盖主流图片生成方式',
+            body: '支持文生图、图生图和多图合成。你可以从一句画面描述开始，也可以上传参考图来控制人物姿态、产品外观、构图方向或整体风格。',
+          },
+          {
+            title: '适合广告、产品与内容视觉',
+            body: '页面围绕创作者、运营和设计人员的实际流程组织：先补齐 prompt，再选择尺寸和输出格式，最后保存可预览、可下载、可继续复用的结果。',
+          },
+          {
+            title: '保留必要的审查边界',
+            body: 'AI 输出需要人工审查，商用还取决于素材权利、适用法律和目标平台规则。Agnes 会明确展示数据处理和使用限制。',
+          },
+        ],
+        useCases: ['广告海报与产品主视觉', '社媒封面与内容配图', '概念草图与风格探索', '多素材合成与场景提案'],
+        faqs: [
+          {
+            question: '这个 AI 图片生成器支持哪些模式？',
+            answer: '支持文生图、图生图和多图合成。图生图需要 1 张参考图，多图合成需要至少 2 张参考图。',
+          },
+          {
+            question: '可以直接用于商业发布吗？',
+            answer: '生成结果是否可商用取决于你的输入素材权利、适用法律和发布平台政策，发布前需要自行审查。',
+          },
+        ],
+      },
+      en: {
+        title: 'AI Image Generator - Text to Image, Image to Image, Multi-image Composition | Agnes Frame Studio',
+        description: 'Agnes Frame Studio provides an AI image generation workspace with text-to-image, image-to-image, multi-image composition, prompt optimization, image understanding, local history, and downloads.',
+        eyebrow: 'AI IMAGE GENERATOR',
+        h1: 'AI image generator for prompts, references, and reusable visual drafts',
+        lead: 'Create images from text, one reference image, or multiple assets while keeping prompt refinement, queue status, previews, downloads, and history refill in one workspace.',
+        primaryCta: 'Start image generation',
+        secondaryCta: 'Explore video generation',
+        sections: [
+          {
+            title: 'Covers common image generation workflows',
+            body: 'Use text-to-image, image-to-image, or multi-image composition. Start from a scene description or upload reference images to guide pose, product shape, composition, or style.',
+          },
+          {
+            title: 'Built for creative and marketing visuals',
+            body: 'The page follows a practical workflow: complete the prompt, choose size and output format, then preview, download, and reuse completed results.',
+          },
+          {
+            title: 'Keeps review boundaries visible',
+            body: 'AI output still needs human review. Commercial use depends on your source material rights, applicable law, and destination platform policies.',
+          },
+        ],
+        useCases: ['Ad posters and product hero images', 'Social covers and content images', 'Concept drafts and style exploration', 'Multi-asset composition and scene proposals'],
+        faqs: [
+          {
+            question: 'Which image modes are supported?',
+            answer: 'Agnes supports text-to-image, image-to-image, and multi-image composition. Image-to-image needs one reference image, while multi-image composition needs at least two.',
+          },
+          {
+            question: 'Can outputs be used commercially?',
+            answer: 'Commercial use depends on your input rights, applicable law, and destination platform policies. Review outputs before publishing.',
+          },
+        ],
+      },
+    },
+  },
+  {
+    slug: 'text-to-image',
+    path: '/text-to-image',
+    toolPath: '/image',
+    priority: '0.82',
+    changefreq: 'weekly',
+    keywords: ['文生图', 'text to image', 'AI 绘画', 'prompt 生成图片'],
+    content: {
+      zh: {
+        title: '文生图工具 - 用 Prompt 生成 AI 图片 | Agnes 显影室',
+        description: '用中文或英文 prompt 生成 AI 图片，适合广告视觉、产品概念图、社媒封面和创意草图。',
+        eyebrow: 'TEXT TO IMAGE',
+        h1: '文生图：把一句画面描述变成图片草图',
+        lead: '输入主体、场景、风格、镜头和用途，Agnes 会把你的描述提交为可追踪的图片生成任务。',
+        primaryCta: '打开文生图',
+        secondaryCta: '了解图生图',
+        sections: [
+          { title: '从空白想法开始', body: '文生图适合没有参考素材的场景。你只需要描述画面主体、环境、材质、光线和画幅，就能生成第一版视觉方向。' },
+          { title: 'Prompt 可继续优化', body: '内置 Prompt 优化和完整度检查，帮助你补齐缺失信息，减少反复试错。' },
+          { title: '结果可回填复用', body: '完成后的任务会进入本地历史，可以搜索、预览、下载，也可以把原 prompt 回填到下一次生成。' },
+        ],
+        useCases: ['品牌 KV 草图', '产品概念视觉', '小红书/社媒封面', '广告分镜静帧'],
+        faqs: [
+          { question: '文生图需要上传图片吗？', answer: '不需要。文生图只需要输入 prompt，参考图片是图生图和多图合成模式才需要。' },
+          { question: 'Prompt 应该怎么写？', answer: '建议包含主体、场景、风格、材质、光线、镜头、画幅和用途。页面会提供完整度建议。' },
+        ],
+      },
+      en: {
+        title: 'Text to Image Generator - Create AI Images from Prompts | Agnes',
+        description: 'Generate AI images from Chinese or English prompts for ad visuals, product concepts, social covers, and creative drafts.',
+        eyebrow: 'TEXT TO IMAGE',
+        h1: 'Text to image generation from a clear visual prompt',
+        lead: 'Describe the subject, scene, style, camera, and intended use. Agnes turns the prompt into a trackable image generation task.',
+        primaryCta: 'Open text to image',
+        secondaryCta: 'Learn image to image',
+        sections: [
+          { title: 'Start without source material', body: 'Text-to-image is useful when you do not have references yet. Describe subject, environment, material, lighting, and aspect ratio to generate an initial visual direction.' },
+          { title: 'Improve prompts before submitting', body: 'Prompt optimization and completeness checks help fill missing details and reduce repeated trial and error.' },
+          { title: 'Reuse results from history', body: 'Finished tasks are saved to local history for search, preview, download, and prompt refill.' },
+        ],
+        useCases: ['Brand key visual drafts', 'Product concept visuals', 'Social media covers', 'Ad storyboard stills'],
+        faqs: [
+          { question: 'Does text to image require uploads?', answer: 'No. Text-to-image only needs a prompt. Reference images are used by image-to-image and multi-image composition modes.' },
+          { question: 'What should a prompt include?', answer: 'Include subject, scene, style, material, lighting, camera, aspect ratio, and intended use. The page can suggest missing details.' },
+        ],
+      },
+    },
+  },
+  {
+    slug: 'image-to-image',
+    path: '/image-to-image',
+    toolPath: '/image',
+    priority: '0.82',
+    changefreq: 'weekly',
+    keywords: ['图生图', 'image to image', 'AI 风格转换', '参考图生成'],
+    content: {
+      zh: {
+        title: '图生图 AI 工具 - 上传参考图重塑风格与场景 | Agnes 显影室',
+        description: '上传 1 张参考图，通过提示词调整风格、光线、材质、场景和构图方向，生成新的 AI 图片。',
+        eyebrow: 'IMAGE TO IMAGE',
+        h1: '图生图：保留参考方向，重塑画面风格',
+        lead: '上传一张你有权使用的图片，再用 prompt 描述要改变的风格、材质、光线和场景。',
+        primaryCta: '打开图生图',
+        secondaryCta: '查看多图合成',
+        sections: [
+          { title: '适合有明确参考的创作', body: '当你希望保留人物姿态、产品外形或大致构图，但改变摄影风格、场景氛围或视觉语言时，图生图比纯文生图更可控。' },
+          { title: '图片理解辅助写 Prompt', body: '页面可基于第一张参考图生成提示词草案，再结合你的目标风格继续调整。' },
+          { title: '参考图权限需要自行确认', body: '请只上传你有权使用的素材。生成结果发布前还需要审查版权、肖像、商标和平台政策风险。' },
+        ],
+        useCases: ['产品图风格重塑', '人物海报方向探索', '参考构图再创作', '材质和光线替换'],
+        faqs: [
+          { question: '图生图可以上传几张参考图？', answer: '图生图模式使用 1 张参考图。如果需要多张素材组合，请使用多图合成。' },
+          { question: '图片 URL 有什么要求？', answer: '建议使用 https 公网图片 URL；本地上传图片会直接用于生成流程。' },
+        ],
+      },
+      en: {
+        title: 'Image to Image AI Tool - Restyle References and Scenes | Agnes',
+        description: 'Upload one reference image and use prompts to adjust style, lighting, material, scene, and composition direction.',
+        eyebrow: 'IMAGE TO IMAGE',
+        h1: 'Image to image generation that keeps the reference direction',
+        lead: 'Upload an image you have rights to use, then describe the style, material, lighting, and scene changes you want.',
+        primaryCta: 'Open image to image',
+        secondaryCta: 'See multi-image composition',
+        sections: [
+          { title: 'Useful when you already have a reference', body: 'Image-to-image gives more control when you want to preserve pose, product shape, or composition while changing style, atmosphere, or visual language.' },
+          { title: 'Image understanding helps with prompts', body: 'The page can analyze the first reference image and produce a prompt draft that you can refine toward your target style.' },
+          { title: 'Source rights still matter', body: 'Only upload materials you have rights to use. Review copyright, likeness, trademark, and platform policy risks before publishing.' },
+        ],
+        useCases: ['Product image restyling', 'Portrait poster exploration', 'Reference composition remake', 'Material and lighting changes'],
+        faqs: [
+          { question: 'How many reference images can image-to-image use?', answer: 'Image-to-image uses one reference image. Use multi-image composition when combining multiple assets.' },
+          { question: 'What image URLs are recommended?', answer: 'Use public https image URLs when pasting links. Local uploads are also supported for the generation flow.' },
+        ],
+      },
+    },
+  },
+  {
+    slug: 'multi-image-composition',
+    path: '/multi-image-composition',
+    toolPath: '/image',
+    priority: '0.8',
+    changefreq: 'weekly',
+    keywords: ['多图合成 AI', 'multi image composition', '多张图片合成', 'AI 合成图片'],
+    content: {
+      zh: {
+        title: '多图合成 AI - 将多张素材合成一张图片 | Agnes 显影室',
+        description: '使用多张参考素材生成统一画面，适合角色组合、产品搭配、场景提案和广告视觉草图。',
+        eyebrow: 'MULTI-IMAGE COMPOSITION',
+        h1: '多图合成 AI：把多张素材放进同一个画面',
+        lead: '上传至少 2 张参考图，通过 prompt 说明各素材之间的关系、场景、构图和最终用途。',
+        primaryCta: '打开多图合成',
+        secondaryCta: '返回图片生成',
+        sections: [
+          { title: '面向素材整合场景', body: '多图合成适合把人物、产品、背景、道具等素材组合成统一画面，用于快速验证视觉方向。' },
+          { title: '用 Prompt 约束关系', body: '建议明确说明每张素材在画面中的位置、大小、互动关系、光线一致性和品牌风格。' },
+          { title: '动态素材槽', body: '页面会根据上传内容展示参考素材，不预设无意义空槽，让用户更清楚当前素材数量。' },
+        ],
+        useCases: ['角色与产品组合', '商品搭配图', '广告场景提案', '多素材 moodboard 转成画面'],
+        faqs: [
+          { question: '多图合成最少需要几张图片？', answer: '至少需要 2 张参考图片，当前工作流最多支持 8 张。' },
+          { question: '多图合成适合精确修图吗？', answer: '它更适合生成视觉方向和合成草图，不等同于像素级精修或确定性排版。' },
+        ],
+      },
+      en: {
+        title: 'Multi-image Composition AI - Combine Multiple References | Agnes',
+        description: 'Generate one unified image from multiple reference assets for character grouping, product pairing, scene proposals, and ad visual drafts.',
+        eyebrow: 'MULTI-IMAGE COMPOSITION',
+        h1: 'Multi-image composition AI for combining several assets',
+        lead: 'Upload at least two reference images and describe their relationship, scene, composition, and intended use.',
+        primaryCta: 'Open multi-image composition',
+        secondaryCta: 'Back to image generation',
+        sections: [
+          { title: 'Designed for asset combination', body: 'Combine people, products, backgrounds, and props into one scene to validate a visual direction quickly.' },
+          { title: 'Use prompts to define relationships', body: 'Describe each asset position, scale, interaction, lighting consistency, and brand style to guide the composition.' },
+          { title: 'Dynamic reference slots', body: 'The interface shows slots based on uploaded assets instead of fixed empty placeholders, so the current asset count stays clear.' },
+        ],
+        useCases: ['Character and product combinations', 'Product pairing images', 'Ad scene proposals', 'Turning moodboards into scenes'],
+        faqs: [
+          { question: 'How many images are required?', answer: 'Multi-image composition requires at least two reference images and currently supports up to eight.' },
+          { question: 'Is it for precise retouching?', answer: 'It is better for visual direction and composition drafts, not pixel-perfect retouching or deterministic layout.' },
+        ],
+      },
+    },
+  },
+  {
+    slug: 'ai-video-generator',
+    path: '/ai-video-generator',
+    toolPath: '/video',
+    priority: '0.86',
+    changefreq: 'weekly',
+    keywords: ['AI 视频生成器', 'AI video generator', '文生视频', '图生视频', '关键帧动画'],
+    content: {
+      zh: {
+        title: 'AI 视频生成器 - 文生视频、图生视频与关键帧动画 | Agnes 显影室',
+        description: 'Agnes 显影室支持 AI 短视频生成，包含文生视频、图生视频、多图视频和关键帧动画，适合广告分镜、产品动作和社媒动态。',
+        eyebrow: 'AI VIDEO GENERATOR',
+        h1: 'AI 视频生成器：从文字、参考图到短视频草案',
+        lead: '用文字、单张参考图、多张素材或关键帧生成短视频，并通过帧数、帧率、分辨率和负向提示词控制输出方向。',
+        primaryCta: '开始生成视频',
+        secondaryCta: '查看图片生成',
+        sections: [
+          { title: '覆盖短视频生成入口', body: '支持文生视频、图生视频、多图视频和关键帧动画，适合从创意概念快速进入动态预演。' },
+          { title: '把等待变成可读进度', body: '视频生成耗时更长，页面通过队列、任务状态、进度和历史记录让用户知道任务是否仍在推进。' },
+          { title: '发布前必须人工审查', body: '视频输出为 AI 生成或 AI 辅助生成，用于广告、社媒或商业发布前需要人工确认画面、权利和平台合规。' },
+        ],
+        useCases: ['广告分镜预演', '产品动态展示', '社媒短视频草案', '关键帧动效探索'],
+        faqs: [
+          { question: 'AI 视频生成支持哪些模式？', answer: '支持文生视频、图生视频、多图视频和关键帧动画。非文生视频模式需要上传参考图片。' },
+          { question: '为什么视频生成耗时不固定？', answer: '耗时受队列、视频长度、帧率、上游服务状态和网络影响，因此完成时间不会固定。' },
+        ],
+      },
+      en: {
+        title: 'AI Video Generator - Text to Video, Image to Video, Keyframe Animation | Agnes',
+        description: 'Agnes supports AI short video generation with text-to-video, image-to-video, multi-image video, and keyframe animation for ad storyboards, product motion, and social clips.',
+        eyebrow: 'AI VIDEO GENERATOR',
+        h1: 'AI video generator for text, reference images, and short motion drafts',
+        lead: 'Create short videos from text, one image, multiple assets, or keyframes while controlling frames, FPS, resolution, and negative prompts.',
+        primaryCta: 'Start video generation',
+        secondaryCta: 'Explore image generation',
+        sections: [
+          { title: 'Covers short video entry points', body: 'Use text-to-video, image-to-video, multi-image video, or keyframe animation to move from a creative concept into motion quickly.' },
+          { title: 'Makes waiting readable', body: 'Video generation can take longer, so the interface shows queue status, task progress, and local history instead of leaving users with a blank wait.' },
+          { title: 'Human review is required before publishing', body: 'Video outputs are AI-generated or AI-assisted. Review visuals, rights, and platform compliance before ads, social media, or commercial use.' },
+        ],
+        useCases: ['Ad storyboard previews', 'Product motion demos', 'Social short video drafts', 'Keyframe motion exploration'],
+        faqs: [
+          { question: 'Which AI video modes are supported?', answer: 'Agnes supports text-to-video, image-to-video, multi-image video, and keyframe animation. Non-text modes require reference images.' },
+          { question: 'Why is video generation time variable?', answer: 'Completion time depends on queue load, video length, FPS, upstream service status, and network conditions.' },
+        ],
+      },
+    },
+  },
+  {
+    slug: 'image-to-video',
+    path: '/image-to-video',
+    toolPath: '/video',
+    priority: '0.82',
+    changefreq: 'weekly',
+    keywords: ['图生视频', '图片转视频 AI', 'image to video AI', 'AI 动态化'],
+    content: {
+      zh: {
+        title: '图生视频 AI - 图片转短视频工具 | Agnes 显影室',
+        description: '上传参考图片并输入动作描述，生成 AI 短视频草案，适合产品动态、广告镜头和社媒内容预演。',
+        eyebrow: 'IMAGE TO VIDEO',
+        h1: '图生视频：把静态图片推进成动态镜头',
+        lead: '用一张参考图锁定主体或画面方向，再通过 prompt 描述运动、镜头、光线和节奏。',
+        primaryCta: '打开图生视频',
+        secondaryCta: '查看关键帧动画',
+        sections: [
+          { title: '从已有视觉资产出发', body: '图生视频适合已有产品图、海报草图或角色设定的场景，让静态画面快速变成动态预演。' },
+          { title: '动作描述越具体越好', body: '建议写清主体怎么动、镜头怎么动、背景是否变化、光线如何扫过，以及需要避免的变形或闪烁。' },
+          { title: '本地图片会转为公网 URL', body: '视频接口需要图片 URL，本地上传图片可能会先上传到 ImgBB，再提交给 Agnes Video。隐私政策中已明确披露。' },
+        ],
+        useCases: ['产品旋转展示', '海报动态化', '角色动作预演', '广告镜头验证'],
+        faqs: [
+          { question: '图生视频需要几张图片？', answer: '图生视频模式需要 1 张参考图片。多图视频和关键帧动画需要至少 2 张。' },
+          { question: '图片转视频适合长视频吗？', answer: '当前更适合短视频草案和动态镜头预演，页面提供约 3 秒到 18 秒的时长预设。' },
+        ],
+      },
+      en: {
+        title: 'Image to Video AI - Turn Images into Short Video Drafts | Agnes',
+        description: 'Upload a reference image and describe motion to create AI short video drafts for product movement, ad shots, and social content previews.',
+        eyebrow: 'IMAGE TO VIDEO',
+        h1: 'Image to video generation for turning stills into motion shots',
+        lead: 'Use one reference image to anchor the subject or visual direction, then describe motion, camera, lighting, and pacing.',
+        primaryCta: 'Open image to video',
+        secondaryCta: 'See keyframe animation',
+        sections: [
+          { title: 'Start from existing visual assets', body: 'Image-to-video is useful when you already have product images, poster drafts, or character concepts and want a motion preview.' },
+          { title: 'Specific motion prompts help', body: 'Describe how the subject moves, how the camera moves, whether the background changes, how light behaves, and what deformation or flicker to avoid.' },
+          { title: 'Local images become public URLs for video', body: 'The video API requires image URLs, so local uploads may be sent to ImgBB before Agnes Video. This is disclosed in the privacy policy.' },
+        ],
+        useCases: ['Product rotation demos', 'Animated posters', 'Character motion previews', 'Ad shot validation'],
+        faqs: [
+          { question: 'How many images does image-to-video need?', answer: 'Image-to-video needs one reference image. Multi-image video and keyframe animation need at least two.' },
+          { question: 'Is it for long videos?', answer: 'It is currently better for short motion drafts and shot previews. The page offers presets from about 3 to 18 seconds.' },
+        ],
+      },
+    },
+  },
+  {
+    slug: 'keyframe-animation',
+    path: '/keyframe-animation',
+    toolPath: '/video',
+    priority: '0.78',
+    changefreq: 'weekly',
+    keywords: ['关键帧动画 AI', 'keyframe animation AI', '多图视频', 'AI 动画生成'],
+    content: {
+      zh: {
+        title: '关键帧动画 AI - 用多张关键帧生成短视频 | Agnes 显影室',
+        description: '上传多张关键帧图片并描述运动关系，生成 AI 短视频草案，适合镜头转场、产品动作和动态分镜。',
+        eyebrow: 'KEYFRAME ANIMATION',
+        h1: '关键帧动画：用多张图控制视频起承转合',
+        lead: '上传至少 2 张关键帧，让模型在图像之间生成过渡，用于快速验证动态分镜和镜头节奏。',
+        primaryCta: '打开关键帧动画',
+        secondaryCta: '查看图生视频',
+        sections: [
+          { title: '比单图更适合控制变化', body: '当你已经知道起始、结束或中间画面时，关键帧动画能比单张图生视频更明确地表达运动目标。' },
+          { title: '描述帧间关系', body: '建议说明每张关键帧之间发生了什么：主体移动、镜头推进、产品展开、场景切换或光线变化。' },
+          { title: '适合预演，不替代精修动画', body: '生成结果适合作为短视频草案和方向验证，不等同于逐帧可控的专业动画制作。' },
+        ],
+        useCases: ['广告分镜过渡', '产品开合动作', '场景转场预演', '角色姿态变化'],
+        faqs: [
+          { question: '关键帧动画最少需要几张图片？', answer: '至少需要 2 张关键帧图片，当前工作流最多支持 8 张。' },
+          { question: '关键帧顺序重要吗？', answer: '重要。请按希望的视频顺序上传关键帧，并在 prompt 里说明帧间运动。' },
+        ],
+      },
+      en: {
+        title: 'Keyframe Animation AI - Generate Short Videos from Key Images | Agnes',
+        description: 'Upload multiple keyframe images and describe their motion relationship to create AI short video drafts for transitions, product motion, and dynamic storyboards.',
+        eyebrow: 'KEYFRAME ANIMATION',
+        h1: 'Keyframe animation AI for controlling motion with multiple images',
+        lead: 'Upload at least two keyframes and let the model generate transitions between them for storyboard and pacing validation.',
+        primaryCta: 'Open keyframe animation',
+        secondaryCta: 'See image to video',
+        sections: [
+          { title: 'More control than a single image', body: 'When you know the start, end, or middle frames, keyframe animation can express the motion target more clearly than single-image video generation.' },
+          { title: 'Describe relationships between frames', body: 'Explain what happens between frames: subject movement, camera push, product unfolding, scene transition, or lighting changes.' },
+          { title: 'Good for previews, not precision animation', body: 'Outputs are best used as short motion drafts and direction checks, not frame-perfect professional animation.' },
+        ],
+        useCases: ['Ad storyboard transitions', 'Product opening motion', 'Scene transition previews', 'Pose changes'],
+        faqs: [
+          { question: 'How many keyframe images are required?', answer: 'At least two keyframe images are required, and the current workflow supports up to eight.' },
+          { question: 'Does keyframe order matter?', answer: 'Yes. Upload keyframes in the intended video order and describe the motion between them in the prompt.' },
+        ],
+      },
+    },
+  },
+  {
+    slug: 'prompt-optimizer',
+    path: '/prompt-optimizer',
+    toolPath: '/image',
+    priority: '0.74',
+    changefreq: 'monthly',
+    keywords: ['AI prompt 优化', 'prompt optimizer', '提示词优化', 'AI 提示词'],
+    content: {
+      zh: {
+        title: 'AI Prompt 优化工具 - 补齐图片与视频生成提示词 | Agnes 显影室',
+        description: '使用文本模型优化图片和视频生成 prompt，补齐主体、风格、材质、镜头、负向约束和用途信息。',
+        eyebrow: 'PROMPT OPTIMIZER',
+        h1: 'AI Prompt 优化：把模糊描述变成可执行提示词',
+        lead: '在图片和视频生成页中输入初稿，Agnes 会按当前模式优化提示词，并提示哪些信息还不完整。',
+        primaryCta: '去优化图片 Prompt',
+        secondaryCta: '去优化视频 Prompt',
+        sections: [
+          { title: '针对不同生成模式优化', body: '文生图、图生图、多图合成、文生视频和图生视频需要的信息不同，优化会结合当前模式给出更贴近任务的表达。' },
+          { title: '完整度检查减少试错', body: '页面会评估 prompt 是否缺少主体、场景、风格、材质、镜头或限制条件，帮助你在提交前补齐。' },
+          { title: '不替代人工判断', body: '优化后的 prompt 是建议稿。用于商业发布前，你仍需要确认内容准确性、权利风险和平台政策。' },
+        ],
+        useCases: ['广告画面提示词', '产品图提示词', '图生视频动作描述', '多图合成关系说明'],
+        faqs: [
+          { question: 'Prompt 优化会直接生成图片吗？', answer: '不会。它只改写和补齐提示词，生成图片或视频需要在工作台中提交任务。' },
+          { question: '支持中文 Prompt 吗？', answer: '支持。页面语言和输入内容可以是中文或英文。' },
+        ],
+      },
+      en: {
+        title: 'AI Prompt Optimizer - Improve Image and Video Generation Prompts | Agnes',
+        description: 'Use a text model to improve image and video prompts by adding subject, style, material, camera, negative constraints, and intended use.',
+        eyebrow: 'PROMPT OPTIMIZER',
+        h1: 'AI prompt optimizer for turning vague ideas into usable generation prompts',
+        lead: 'Enter a draft prompt on the image or video page. Agnes optimizes it for the current mode and shows which details may still be missing.',
+        primaryCta: 'Optimize image prompts',
+        secondaryCta: 'Optimize video prompts',
+        sections: [
+          { title: 'Optimized for each generation mode', body: 'Text-to-image, image-to-image, multi-image composition, text-to-video, and image-to-video need different details, so the optimizer adapts to the selected task.' },
+          { title: 'Completeness checks reduce trial and error', body: 'The page checks whether a prompt lacks subject, scene, style, material, camera, or constraints before submission.' },
+          { title: 'It does not replace human judgment', body: 'Optimized prompts are suggestions. Review accuracy, rights risks, and platform policies before commercial publishing.' },
+        ],
+        useCases: ['Ad visual prompts', 'Product image prompts', 'Image-to-video motion descriptions', 'Multi-image relationship notes'],
+        faqs: [
+          { question: 'Does prompt optimization generate images directly?', answer: 'No. It only rewrites and completes prompts. Submit a task in the workspace to generate images or videos.' },
+          { question: 'Are Chinese prompts supported?', answer: 'Yes. The interface and prompt input can work in Chinese or English.' },
+        ],
+      },
+    },
+  },
+  {
+    slug: 'image-to-prompt',
+    path: '/image-to-prompt',
+    toolPath: '/image',
+    priority: '0.72',
+    changefreq: 'monthly',
+    keywords: ['图片生成提示词', 'image to prompt', '图片理解', '反推 prompt'],
+    content: {
+      zh: {
+        title: '图片生成 Prompt - 根据参考图生成提示词 | Agnes 显影室',
+        description: '通过图片理解能力分析参考图，生成适合图生图、多图合成和图生视频的 prompt 草案。',
+        eyebrow: 'IMAGE TO PROMPT',
+        h1: '图片生成 Prompt：从参考图提取可用描述',
+        lead: '上传或粘贴参考图后，让 Agnes 分析第一张图片，并生成符合当前生成模式的提示词草案。',
+        primaryCta: '用图片生成 Prompt',
+        secondaryCta: '查看 Prompt 优化',
+        sections: [
+          { title: '适合不知道怎么描述图片时使用', body: '图片理解会把画面主体、风格、构图、材质和氛围转成文字草案，便于继续调整。' },
+          { title: '结合当前模式输出', body: '图生图、多图合成和视频模式需要不同表达，分析结果会尽量贴合当前任务，而不是只给通用描述。' },
+          { title: '只分析第一张参考图', body: '在多图模式下，当前实现会分析第一张图片。多张图片之间的关系仍需要你在 prompt 中补充。' },
+        ],
+        useCases: ['参考图反推提示词', '图片风格描述', '多图合成 Prompt 起稿', '图生视频 Prompt 起稿'],
+        faqs: [
+          { question: '图片理解会分析所有上传图片吗？', answer: '当前只分析第一张图片，多图之间的关系需要用户补充说明。' },
+          { question: '支持哪些图片输入？', answer: '支持本地图片和合法的 https 图片 URL；后端对图片输入会做安全校验。' },
+        ],
+      },
+      en: {
+        title: 'Image to Prompt - Generate Prompts from Reference Images | Agnes',
+        description: 'Analyze reference images and create prompt drafts for image-to-image, multi-image composition, and image-to-video workflows.',
+        eyebrow: 'IMAGE TO PROMPT',
+        h1: 'Image to prompt generation for extracting usable visual descriptions',
+        lead: 'Upload or paste a reference image, then let Agnes analyze the first image and produce a prompt draft for the selected generation mode.',
+        primaryCta: 'Generate prompt from image',
+        secondaryCta: 'See prompt optimizer',
+        sections: [
+          { title: 'Useful when images are hard to describe', body: 'Image understanding turns subject, style, composition, material, and atmosphere into a text draft you can refine.' },
+          { title: 'Aligned with the current mode', body: 'Image-to-image, multi-image composition, and video modes require different wording, so the output follows the selected task where possible.' },
+          { title: 'Analyzes the first reference image', body: 'In multi-image modes, the current implementation analyzes the first image. You still need to describe relationships between multiple images.' },
+        ],
+        useCases: ['Reverse prompt drafts from references', 'Image style descriptions', 'Multi-image prompt starting points', 'Image-to-video prompt drafts'],
+        faqs: [
+          { question: 'Does image understanding analyze every uploaded image?', answer: 'Currently it analyzes the first image only. Relationships between multiple images should be added by the user.' },
+          { question: 'Which image inputs are supported?', answer: 'Local images and valid https image URLs are supported. The backend validates image inputs for safety.' },
+        ],
+      },
+    },
+  },
+];
+
+export function getSeoLandingPageByPath(pathname: string): SeoLandingPage | undefined {
+  const normalized = pathname.replace(/\/+$/, '') || '/';
+  return SEO_LANDING_PAGES.find((page) => page.path === normalized);
+}

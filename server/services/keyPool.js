@@ -46,6 +46,9 @@ class KeyPool {
       this._byKey.set(key, m);
     }
 
+    // key -> category -> until timestamp。用于上游真实 429 后临时跳过该 key。
+    this._cooldowns = new Map();
+
     // 轮询起点指针，用于在并列空闲时实现轮转（round-robin）均衡
     this._rrCursor = 0;
   }
@@ -70,6 +73,44 @@ class KeyPool {
     return lim;
   }
 
+  _cooldownUntil(key, category, now = Date.now()) {
+    const until = this._cooldowns.get(key)?.get(category) || 0;
+    if (until <= now) {
+      const byCategory = this._cooldowns.get(key);
+      if (byCategory) {
+        byCategory.delete(category);
+        if (byCategory.size === 0) this._cooldowns.delete(key);
+      }
+      return 0;
+    }
+    return until;
+  }
+
+  /**
+   * 上游返回真实限流后，将指定 key 在该分类下临时冷却。
+   * 只影响后续 acquire；已在执行的图片/视频任务不会被中断。
+   * @param {string} key
+   * @param {string} category
+   * @param {number} [retryAfterMs]
+   */
+  markLimited(key, category, retryAfterMs) {
+    if (!key || !this._byKey.has(key)) return;
+    const cooldownMs = Number.isFinite(retryAfterMs) && retryAfterMs > 0 ? retryAfterMs : this._windowMs;
+    const until = Date.now() + cooldownMs;
+    let byCategory = this._cooldowns.get(key);
+    if (!byCategory) {
+      byCategory = new Map();
+      this._cooldowns.set(key, byCategory);
+    }
+    byCategory.set(category, Math.max(byCategory.get(category) || 0, until));
+    logger.warn('keypool.key_limited', {
+      category,
+      keyIndex: this._keys.indexOf(key),
+      retryAfterMs: cooldownMs,
+      cooldownUntil: new Date(until).toISOString(),
+    });
+  }
+
   /**
    * 尝试同步占用一个令牌：选择剩余配额最多的 Key（并列时轮转），成功则返回 key。
    * @param {string} category
@@ -78,13 +119,42 @@ class KeyPool {
   tryAcquire(category) {
     let best = null; // { key, remaining }
     let minRetryAfterMs = Infinity;
+    const inspected = [];
 
     const n = this._keys.length;
     // 从 round-robin 游标处开始遍历，保证并列空闲时雨露均沾
     for (let i = 0; i < n; i += 1) {
       const idx = (this._rrCursor + i) % n;
       const key = this._keys[idx];
+      const now = Date.now();
+      const cooldownUntil = this._cooldownUntil(key, category);
+      if (cooldownUntil > 0) {
+        const cooldownRemainingMs = Math.max(0, cooldownUntil - now);
+        minRetryAfterMs = Math.min(minRetryAfterMs, cooldownRemainingMs);
+        inspected.push({
+          keyIndex: idx,
+          state: 'cooldown',
+          cooldownRemainingMs,
+        });
+        if (category === 'text') {
+          logger.info('keypool.acquire.skip_cooldown', {
+            category,
+            keyIndex: idx,
+            cooldownRemainingMs,
+            cooldownUntil: new Date(cooldownUntil).toISOString(),
+          });
+        }
+        continue;
+      }
       const snap = this._limiterFor(key, category).snapshot(category);
+      inspected.push({
+        keyIndex: idx,
+        state: snap.remaining > 0 ? 'available' : 'local_limit',
+        used: snap.used,
+        limit: snap.limit,
+        remaining: snap.remaining,
+        retryAfterMs: snap.retryAfterMs,
+      });
       if (snap.remaining > 0) {
         if (!best || snap.remaining > best.remaining) {
           best = { key, remaining: snap.remaining, idx };
@@ -98,12 +168,31 @@ class KeyPool {
       const r = this._limiterFor(best.key, category).tryAcquire(category);
       // 占用成功后推进游标，下一次从下一个 key 开始挑选
       this._rrCursor = (best.idx + 1) % n;
+      if (category === 'text') {
+        logger.info('keypool.acquire.selected', {
+          category,
+          keyIndex: best.idx,
+          remainingBeforeAcquire: best.remaining,
+          remainingAfterAcquire: r.remaining,
+          nextCursor: this._rrCursor,
+          inspected,
+        });
+      }
       return { ok: true, key: best.key, remaining: r.remaining };
     }
 
+    const retryAfterMs = Number.isFinite(minRetryAfterMs) ? Math.max(0, minRetryAfterMs) : this._windowMs;
+    if (category === 'text') {
+      logger.warn('keypool.acquire.no_available_key', {
+        category,
+        retryAfterMs,
+        keyCount: n,
+        inspected,
+      });
+    }
     return {
       ok: false,
-      retryAfterMs: Number.isFinite(minRetryAfterMs) ? minRetryAfterMs : this._windowMs,
+      retryAfterMs,
     };
   }
 
@@ -127,7 +216,17 @@ class KeyPool {
       }
 
       const res = this.tryAcquire(category);
-      if (res.ok) return res.key;
+      if (res.ok) {
+        if (category === 'text') {
+          logger.info('keypool.acquire.completed', {
+            category,
+            keyIndex: this._keys.indexOf(res.key),
+            remaining: res.remaining,
+            waitedMs: Date.now() - startedAt,
+          });
+        }
+        return res.key;
+      }
 
       const waitedMs = Date.now() - startedAt;
       if (this._maxWaitMs > 0 && waitedMs >= this._maxWaitMs) {

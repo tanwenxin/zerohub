@@ -8,8 +8,9 @@
     "dev:server": "node --watch server/index.js",
     "dev:web": "npm --prefix web run dev",
     "start": "node app.js",
-    "build": "npm run build:web && npm run sync:public",
+    "build": "npm run generate:seo && npm run build:web && npm run sync:public",
     "build:web": "npm --prefix web run build",
+    "generate:seo": "node scripts/generate-seo-files.js",
     "sync:public": "node scripts/sync-public.js",
     "install:all": "npm install && npm --prefix web install --legacy-peer-deps"
   },

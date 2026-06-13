@@ -9,11 +9,11 @@
   "node_modules/prop-types/index.js": [],
   "node_modules/prop-types/lib/ReactPropTypesSecret.js": [],
   "node_modules/react-dom/cjs/react-dom-client.production.js": [
-    "/assets/client-BsbP8O-X.js"
+    "/assets/client-D5-DdL35.js"
   ],
   "node_modules/react-dom/cjs/react-dom.production.js": [],
   "node_modules/react-dom/client.js": [
-    "/assets/client-BsbP8O-X.js"
+    "/assets/client-D5-DdL35.js"
   ],
   "node_modules/react-dom/index.js": [],
   "node_modules/react-fast-compare/index.js": [],
@@ -25,10 +25,10 @@
   "node_modules/react/index.js": [],
   "node_modules/react/jsx-runtime.js": [],
   "node_modules/scheduler/cjs/scheduler.production.js": [
-    "/assets/client-BsbP8O-X.js"
+    "/assets/client-D5-DdL35.js"
   ],
   "node_modules/scheduler/index.js": [
-    "/assets/client-BsbP8O-X.js"
+    "/assets/client-D5-DdL35.js"
   ],
   "node_modules/shallowequal/index.js": [],
   "node_modules/vite-react-ssg/dist/index.mjs": [],
@@ -40,7 +40,9 @@
   "src/App.tsx": [],
   "src/RootLayout.tsx": [],
   "src/api/client.ts": [],
+  "src/components/AdsenseScript.tsx": [],
   "src/components/BlobDownloadButton.tsx": [],
+  "src/components/CookieConsentBanner.tsx": [],
   "src/components/HistoryToolbar.tsx": [],
   "src/components/ImageUnderstandPanel.tsx": [],
   "src/components/MediaPreviewModal.tsx": [],
@@ -71,28 +73,35 @@
   "src/i18n.ts": [],
   "src/index.css": [],
   "src/main.tsx": [],
+  "src/pages/AboutPage.tsx": [],
   "src/pages/ContactPage.tsx": [],
   "src/pages/DesignSystemPage.css": [],
   "src/pages/DesignSystemPage.tsx": [],
+  "src/pages/GuideArticlePage.tsx": [],
+  "src/pages/GuidesPage.tsx": [],
   "src/pages/HomePage.css": [],
   "src/pages/HomePage.tsx": [],
   "src/pages/ImageGenerate.tsx": [],
   "src/pages/NotFoundPage.tsx": [],
   "src/pages/PrivacyPage.tsx": [],
+  "src/pages/SeoLandingPage.tsx": [],
   "src/pages/TermsPage.tsx": [],
   "src/pages/VideoGenerate.tsx": [],
   "src/preferences.tsx": [],
   "src/preferencesContext.ts": [],
   "src/routes.tsx": [],
+  "src/seoLandingPages.ts": [],
   "src/taskQueue.tsx": [],
   "src/taskQueueContext.ts": [],
   "src/theme.ts": [],
   "src/usePreferences.ts": [],
   "src/useTaskQueue.ts": [],
+  "src/utils/cookieConsent.ts": [],
   "src/utils/draftStorage.ts": [],
   "src/utils/duration.ts": [],
   "src/utils/generationSizes.ts": [],
   "src/utils/localHistory.ts": [],
   "src/utils/notify.ts": [],
+  "src/utils/session.ts": [],
   "src/utils/sizePreference.ts": []
 }

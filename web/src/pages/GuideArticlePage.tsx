@@ -1,0 +1,89 @@
+import { Link } from 'react-router-dom';
+import { usePreferences } from '../usePreferences';
+
+type GuideId = 'prompt' | 'commercial-use' | 'safety';
+
+interface GuideArticlePageProps {
+  guide: GuideId;
+}
+
+const zhContent: Record<GuideId, { title: string; lead: string; sections: Array<[string, string]> }> = {
+  prompt: {
+    title: '提示词编写清单',
+    lead: '清晰的提示词可以减少无效生成，并让后续审查更容易。',
+    sections: [
+      ['明确主体和用途', '写清楚主体、环境、动作、镜头、输出用途和不希望出现的元素。商业用途建议避免使用真实品牌、公众人物或未经授权的角色。'],
+      ['加入可验证约束', '优先使用可观察的画面描述，例如材质、光线、构图、色彩和比例，少用无法验证的抽象形容词。'],
+      ['保留人工审查', '生成结果可能出现事实错误、文字乱码、异常肢体或版权风险。发布前需要人工检查。'],
+    ],
+  },
+  'commercial-use': {
+    title: '商用前审查流程',
+    lead: 'AI 输出不等于天然可商用。发布前应完成权利和平台规则检查。',
+    sections: [
+      ['素材权利', '确认上传图片、参考图、字体、标志、人物肖像和产品图都拥有合法使用权。'],
+      ['平台政策', '投放广告或社媒发布前，检查目标平台对 AI 内容、误导性声明、成人内容、金融/医疗等敏感类别的限制。'],
+      ['留存记录', '保留提示词、素材来源、授权记录和人工审查结论，便于后续处理投诉或平台复核。'],
+    ],
+  },
+  safety: {
+    title: '安全与禁止内容',
+    lead: '为了保护用户和广告生态，部分生成请求应被拒绝或人工复核。',
+    sections: [
+      ['禁止请求', '不要请求生成露骨色情、儿童性剥削、仇恨、血腥暴力、违法活动、欺骗、恶意软件、仿冒商品或政治误导性深度伪造内容。'],
+      ['敏感人物', '涉及真实人物、公众人物或疑似身份冒充时，应确认授权并避免误导性语境。'],
+      ['广告展示', '未经审核的用户生成内容旁不应放置广告。出现违规内容时应删除、阻断重试并记录处置。'],
+    ],
+  },
+};
+
+const enContent: typeof zhContent = {
+  prompt: {
+    title: 'Prompt writing checklist',
+    lead: 'Clear prompts reduce failed generations and make review easier.',
+    sections: [
+      ['Define subject and use', 'Describe the subject, environment, action, camera, intended use, and excluded elements. For commercial use, avoid real brands, public figures, or unauthorized characters.'],
+      ['Use observable constraints', 'Prefer visible details such as material, lighting, composition, color, and ratio instead of vague abstract adjectives.'],
+      ['Keep human review', 'Outputs can include factual errors, broken text, unusual anatomy, or rights risks. Review before publication.'],
+    ],
+  },
+  'commercial-use': {
+    title: 'Commercial use review',
+    lead: 'AI output is not automatically cleared for commercial use. Check rights and platform rules first.',
+    sections: [
+      ['Source rights', 'Confirm that uploaded images, references, fonts, logos, likenesses, and product visuals are licensed for your use.'],
+      ['Platform policies', 'Before ads or social publishing, review the destination platform rules for AI content, misleading claims, adult content, and sensitive verticals.'],
+      ['Keep records', 'Keep prompts, source records, licenses, and review notes so complaints or platform reviews can be handled quickly.'],
+    ],
+  },
+  safety: {
+    title: 'Safety and prohibited content',
+    lead: 'Some generation requests should be rejected or sent to manual review to protect users and the ad ecosystem.',
+    sections: [
+      ['Blocked requests', 'Do not request explicit sexual content, child exploitation, hate, graphic violence, illegal activity, deception, malware, counterfeit goods, or misleading political deepfakes.'],
+      ['Sensitive people', 'For real people or public figures, confirm permission and avoid misleading contexts.'],
+      ['Ad display', 'Do not place ads beside unreviewed user-generated content. Remove violations, block retries, and record the action taken.'],
+    ],
+  },
+};
+
+export function GuideArticlePage({ guide }: GuideArticlePageProps) {
+  const { language } = usePreferences();
+  const content = (language === 'en' ? enContent : zhContent)[guide];
+
+  return (
+    <article className="legal-page">
+      <p className="eyebrow">
+        <Link to="/guides">{language === 'en' ? 'Guides' : '指南'}</Link>
+      </p>
+      <h1>{content.title}</h1>
+      <p className="legal-lead">{content.lead}</p>
+      {content.sections.map(([title, body]) => (
+        <section key={title}>
+          <h2>{title}</h2>
+          <p>{body}</p>
+        </section>
+      ))}
+    </article>
+  );
+}

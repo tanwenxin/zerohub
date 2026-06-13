@@ -10,6 +10,8 @@ const taskStore = require('../services/taskStore');
 const agnesClient = require('../services/agnesClient');
 const logger = require('../services/logger');
 const { keyPool } = require('../services/keyPool');
+const { assertGenerationTextAllowed } = require('../services/contentModeration');
+const { getRequestOwnerId, canAccessTask } = require('../utils/requestOwner');
 const {
   bufferToDataUri,
   isValidImageInput,
@@ -177,12 +179,21 @@ function failTask(task, err) {
  */
 router.post('/generate', upload.array('images', 8), (req, res) => {
   const { type, prompt, size, responseFormat } = req.body;
+  const ownerId = getRequestOwnerId(req);
 
   if (!VALID_TYPES.includes(type)) {
     return res.status(400).json({ error: `type 非法，应为 ${VALID_TYPES.join('/')}` });
   }
+  if (!ownerId) {
+    return res.status(400).json({ error: '缺少有效会话标识，请刷新页面后重试' });
+  }
   if (!prompt || !prompt.trim()) {
     return res.status(400).json({ error: 'prompt 不能为空' });
+  }
+  try {
+    assertGenerationTextAllowed({ prompt });
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message, code: err.code || 'CONTENT_POLICY' });
   }
   if (!isValidSize(size)) {
     return res.status(400).json({ error: 'size 非法，应为正整数尺寸，如 1024x1024' });
@@ -212,9 +223,9 @@ router.post('/generate', upload.array('images', 8), (req, res) => {
     if (type === 'multi' && image.length < 2) {
       return res.status(400).json({ error: '多图合成至少需要 2 张输入图片' });
     }
-    const invalid = image.find((v) => !isValidImageInput(v));
+    const invalid = image.find((v) => !isValidImageInput(v, { requireHttps: true }));
     if (invalid) {
-      return res.status(400).json({ error: '存在非法图片输入，必须为 http(s) URL 或 Data URI' });
+      return res.status(400).json({ error: '存在非法图片输入，必须为 HTTPS URL 或图片 Data URI' });
     }
   }
 
@@ -241,6 +252,7 @@ router.post('/generate', upload.array('images', 8), (req, res) => {
   // 创建任务并立即持久化（前端发起即落盘）。params 仅保存可重放的 URL/文本类字段。
   const task = taskStore.create(type, payloadPreview, {
     category: 'image',
+    ownerId,
     status: 'pending',
     params: {
       type,
@@ -292,6 +304,7 @@ function rebuildImageInput(task) {
 router.post('/tasks/:id/refresh', (req, res) => {
   const task = taskStore.get(req.params.id);
   if (!task) return res.status(404).json({ error: '任务不存在或已过期' });
+  if (!canAccessTask(req, task)) return res.status(404).json({ error: '任务不存在或已过期' });
   if (task.category !== 'image') {
     return res.status(400).json({ error: '该任务不是图片任务' });
   }
@@ -317,7 +330,10 @@ router.post('/tasks/:id/refresh', (req, res) => {
  */
 router.get('/tasks', (req, res) => {
   const { category, limit } = req.query;
+  const ownerId = getRequestOwnerId(req);
+  if (!ownerId) return res.json({ tasks: [] });
   const tasks = taskStore.list({
+    ownerId,
     category: category || undefined,
     limit: limit ? parseInt(limit, 10) : 100,
   });
@@ -330,6 +346,7 @@ router.get('/tasks', (req, res) => {
 router.get('/tasks/:id', (req, res) => {
   const task = taskStore.get(req.params.id);
   if (!task) return res.status(404).json({ error: '任务不存在或已过期' });
+  if (!canAccessTask(req, task)) return res.status(404).json({ error: '任务不存在或已过期' });
   return res.json(task);
 });
 
@@ -337,6 +354,9 @@ router.get('/tasks/:id', (req, res) => {
  * DELETE /api/tasks/:id —— 删除任务（从历史中移除）
  */
 router.delete('/tasks/:id', (req, res) => {
+  const task = taskStore.get(req.params.id);
+  if (!task) return res.status(404).json({ error: '任务不存在' });
+  if (!canAccessTask(req, task)) return res.status(404).json({ error: '任务不存在' });
   const ok = taskStore.remove(req.params.id);
   taskInputs.delete(req.params.id);
   if (!ok) return res.status(404).json({ error: '任务不存在' });
@@ -351,6 +371,7 @@ router.get('/tasks/:id/download/:index', async (req, res) => {
   if (!task || task.status !== 'done' || !task.result) {
     return res.status(404).json({ error: '结果不存在' });
   }
+  if (!canAccessTask(req, task)) return res.status(404).json({ error: '结果不存在' });
   const idx = parseInt(req.params.index, 10) || 0;
   const img = task.result.images && task.result.images[idx];
   if (!img) return res.status(404).json({ error: '图片索引越界' });

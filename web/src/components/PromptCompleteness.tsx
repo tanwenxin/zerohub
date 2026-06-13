@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { checkPromptCompleteness, type PromptCompleteness, type TaskType } from '../api/client';
 import { usePreferences } from '../usePreferences';
 import type { TranslationKey } from '../i18n';
@@ -6,14 +6,15 @@ import type { TranslationKey } from '../i18n';
 interface Props {
   prompt: string;
   mode: TaskType;
+  assessKey: number;
 }
 
 type Status = 'idle' | 'loading' | 'done' | 'error';
 
 // 触发评估的最小有效字符数，避免对极短输入频繁请求
 const MIN_PROMPT_LENGTH = 8;
-// 输入防抖时延（毫秒）
-const DEBOUNCE_MS = 1000;
+// 失焦后短防抖，避免 blur 与状态更新挤在同一轮事件里造成重复请求
+const DEBOUNCE_MS = 300;
 
 const LEVEL_KEY: Record<PromptCompleteness['level'], TranslationKey> = {
   weak: 'completeness.level.weak',
@@ -30,48 +31,77 @@ function ringColor(level: PromptCompleteness['level']): string {
 
 /**
  * Prompt 完整度校验：
- * 用户输入提示词后（防抖），调用后台文本模型按当前模式规范评估完整度，
+ * 用户修改提示词并离开输入框后（防抖），调用后台文本模型按当前模式规范评估完整度，
  * 展示评分环、完整度等级、概述、薄弱维度与改进建议。失败可手动重试。
  */
-export function PromptCompleteness({ prompt, mode }: Props) {
+export function PromptCompleteness({ prompt, mode, assessKey }: Props) {
   const { t } = usePreferences();
   const [status, setStatus] = useState<Status>('idle');
   const [result, setResult] = useState<PromptCompleteness | null>(null);
+  const [errorMessage, setErrorMessage] = useState('');
   const reqIdRef = useRef(0);
+  const timerRef = useRef<number | null>(null);
+  const resetTimerRef = useRef<number | null>(null);
+  const lastCompletedKeyRef = useRef('');
 
   const trimmed = prompt.trim();
   const tooShort = trimmed.length < MIN_PROMPT_LENGTH;
+  const promptKey = `${mode}\n${trimmed}`;
 
   // 实际发起评估：用递增的请求 id 丢弃过期响应，避免乱序覆盖
-  async function run(value: string, currentMode: TaskType) {
+  const run = useCallback(async (value: string, currentMode: TaskType) => {
+    const requestKey = `${currentMode}\n${value.trim()}`;
     const reqId = ++reqIdRef.current;
     setStatus('loading');
+    setErrorMessage('');
     try {
       const res = await checkPromptCompleteness(value, currentMode);
       if (reqId !== reqIdRef.current) return; // 已有更新的请求，丢弃本次结果
+      lastCompletedKeyRef.current = requestKey;
       setResult(res);
       setStatus('done');
-    } catch {
+    } catch (err) {
       if (reqId !== reqIdRef.current) return;
+      setErrorMessage(err instanceof Error ? err.message : '');
       setStatus('error');
     }
-  }
+  }, []);
 
-  // prompt / mode 变化时防抖触发；过短或为空则回到 idle。
-  // 所有状态更新都放到定时器回调中，避免在 effect 体内同步 setState。
+  // prompt / mode 变化时只作废旧请求和旧结果，不主动发起评估。
   useEffect(() => {
     reqIdRef.current += 1; // 使进行中的请求立即失效，丢弃其响应
+    if (timerRef.current != null) {
+      window.clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (resetTimerRef.current != null) window.clearTimeout(resetTimerRef.current);
     const timer = window.setTimeout(() => {
-      if (tooShort) {
+      if (tooShort || lastCompletedKeyRef.current !== promptKey) {
         setStatus('idle');
         setResult(null);
-        return;
+        setErrorMessage('');
       }
+    }, 0);
+    resetTimerRef.current = timer;
+    return () => {
+      window.clearTimeout(timer);
+      if (resetTimerRef.current === timer) resetTimerRef.current = null;
+    };
+  }, [promptKey, tooShort]);
+
+  // 输入框失焦后由外部递增 assessKey 触发评估；同一 prompt 成功评估过则不重复请求。
+  useEffect(() => {
+    if (assessKey <= 0 || tooShort || lastCompletedKeyRef.current === promptKey) return;
+    if (timerRef.current != null) window.clearTimeout(timerRef.current);
+    const timer = window.setTimeout(() => {
       void run(trimmed, mode);
-    }, tooShort ? 0 : DEBOUNCE_MS);
-    return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trimmed, mode]);
+    }, DEBOUNCE_MS);
+    timerRef.current = timer;
+    return () => {
+      window.clearTimeout(timer);
+      if (timerRef.current === timer) timerRef.current = null;
+    };
+  }, [assessKey, mode, promptKey, run, tooShort, trimmed]);
 
   const showRing = status === 'loading' || (status === 'done' && result);
   const score = result?.score ?? 0;
@@ -102,7 +132,7 @@ export function PromptCompleteness({ prompt, mode }: Props) {
           )}
           {status === 'error' && (
             <div className="completeness-foot">
-              <p className="completeness-error">{t('completeness.error')}</p>
+              <p className="completeness-error">{errorMessage || t('completeness.error')}</p>
               <button
                 type="button"
                 className="btn-secondary"

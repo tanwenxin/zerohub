@@ -10,6 +10,8 @@ import { useTaskQueue } from '../useTaskQueue';
 import {
   DEFAULT_VIDEO_SIZE,
   clearVideoSizePreference,
+  getDefaultVideoNegativePrompt,
+  isDefaultVideoNegativePrompt,
   readVideoFrameRatePreference,
   readVideoFramesPreference,
   readVideoModePreference,
@@ -52,15 +54,24 @@ const DURATIONS: { frames: number; labelKey: TranslationKey }[] = [
   { frames: 441, labelKey: 'video.duration.18s' },
 ];
 
+function readInitialVideoNegativePrompt(defaultValue: string): string {
+  const draftPrompt = readVideoDraft()?.negativePrompt;
+  if (typeof draftPrompt === 'string' && draftPrompt.trim() && !isDefaultVideoNegativePrompt(draftPrompt)) {
+    return draftPrompt;
+  }
+  return readVideoNegativePromptPreference(defaultValue);
+}
+
 export function VideoGenerate() {
-  const { t } = usePreferences();
+  const { language, t } = usePreferences();
+  const defaultNegativePrompt = getDefaultVideoNegativePrompt(language);
   const [mode, setMode] = useState<VideoTaskType>(() => {
     const d = readVideoDraft();
     return d && VIDEO_MODES.includes(d.mode) ? d.mode : readVideoModePreference();
   });
   const [prompt, setPrompt] = useState(() => readVideoDraft()?.prompt ?? '');
   const [negativePrompt, setNegativePrompt] = useState(
-    () => readVideoDraft()?.negativePrompt ?? readVideoNegativePromptPreference()
+    () => readInitialVideoNegativePrompt(defaultNegativePrompt)
   );
   const [frames, setFrames] = useState(() => readVideoDraft()?.frames ?? readVideoFramesPreference());
   const [frameRate, setFrameRate] = useState(
@@ -75,7 +86,9 @@ export function VideoGenerate() {
   const [urls, setUrls] = useState<string[]>(() => readVideoDraft()?.urls ?? []);
   const [submitFeedback, setSubmitFeedback] = useState<'idle' | 'accepted'>('idle');
   const [historyKey, setHistoryKey] = useState(0);
+  const [promptAssessKey, setPromptAssessKey] = useState(0);
   const feedbackTimerRef = useRef<number | null>(null);
+  const promptDirtyRef = useRef(false);
 
   const { submitVideo, canSubmit: queueHasRoom, maxActive, submitLocked } = useTaskQueue();
 
@@ -94,6 +107,15 @@ export function VideoGenerate() {
     void saveVideoDraftFiles(files);
   }, [files]);
 
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      setNegativePrompt((prev) => (
+        isDefaultVideoNegativePrompt(prev) ? defaultNegativePrompt : prev
+      ));
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [defaultNegativePrompt]);
+
   const needsImage = mode !== 'text2vid';
   const minImages = mode === 'multivid' || mode === 'keyframes' ? 2 : 1;
   const imageCount = files.length + urls.length;
@@ -111,6 +133,17 @@ export function VideoGenerate() {
         : submitLocked
           ? t('tasks.submitting')
           : t('video.generate');
+
+  function onPromptChange(value: string) {
+    promptDirtyRef.current = true;
+    setPrompt(value);
+  }
+
+  function onPromptBlur() {
+    if (!promptDirtyRef.current) return;
+    promptDirtyRef.current = false;
+    setPromptAssessKey((k) => k + 1);
+  }
 
   function onSubmit() {
     if (!canSubmit || !queueHasRoom || submitLocked) return;
@@ -256,13 +289,14 @@ export function VideoGenerate() {
               rows={4}
               value={prompt}
               placeholder={t('page.video.placeholder')}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={(e) => onPromptChange(e.target.value)}
+              onBlur={onPromptBlur}
             />
             <PromptOptimizeButton prompt={prompt} mode={mode} onOptimized={setPrompt} />
           </div>
         </label>
 
-        <PromptCompleteness prompt={prompt} mode={mode} />
+        <PromptCompleteness prompt={prompt} mode={mode} assessKey={promptAssessKey} />
 
         <label className="field">
           <span>{t('video.negativePrompt')}</span>

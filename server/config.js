@@ -95,6 +95,7 @@ const config = {
     windowMs: int('RATE_LIMIT_WINDOW_MS', 60000),
     imageRpm: int('IMAGE_RPM', 20),
     videoRpm: int('VIDEO_RPM', 20),
+    textRpm: int('TEXT_RPM', 20),
     // 等待队列轮询间隔（毫秒）：配额耗尽时多久检查一次是否有空闲 key 槽位
     waitPollMs: int('RATE_LIMIT_WAIT_POLL_MS', 500),
     // 单个任务最长等待时间（毫秒），超过则置失败，避免无限堆积

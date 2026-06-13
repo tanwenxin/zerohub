@@ -25,8 +25,18 @@ export function PrivacyPage() {
       </section>
 
       <section>
+        <h2>{t('privacy.ads.title')}</h2>
+        <p>{t('privacy.ads.body')}</p>
+      </section>
+
+      <section>
         <h2>{t('privacy.control.title')}</h2>
         <p>{t('privacy.control.body')}</p>
+      </section>
+
+      <section>
+        <h2>{t('privacy.retention.title')}</h2>
+        <p>{t('privacy.retention.body')}</p>
       </section>
     </article>
   );

@@ -5,6 +5,93 @@ export const DEFAULT_VIDEO_SIZE = DEFAULT_GENERATION_SIZE;
 export const DEFAULT_VIDEO_MODE = 'text2vid';
 export const DEFAULT_VIDEO_FRAMES = 121;
 export const DEFAULT_VIDEO_FRAME_RATE = 24;
+export const DEFAULT_VIDEO_NEGATIVE_PROMPT_EN = [
+  'low quality',
+  'worst quality',
+  'low resolution',
+  'blurry',
+  'out of focus',
+  'noisy',
+  'grainy',
+  'compression artifacts',
+  'jpeg artifacts',
+  'flicker',
+  'stuttering',
+  'jittery motion',
+  'frame skipping',
+  'temporal inconsistency',
+  'inconsistent lighting',
+  'unstable camera',
+  'warped motion',
+  'deformed',
+  'distorted',
+  'bad anatomy',
+  'bad hands',
+  'extra fingers',
+  'missing fingers',
+  'extra limbs',
+  'missing limbs',
+  'malformed face',
+  'distorted face',
+  'asymmetrical eyes',
+  'duplicate subject',
+  'cloned face',
+  'poor composition',
+  'cropped',
+  'out of frame',
+  'overexposed',
+  'underexposed',
+  'oversaturated',
+  'watermark',
+  'logo',
+  'text',
+  'subtitles',
+  'signature',
+].join(', ');
+export const DEFAULT_VIDEO_NEGATIVE_PROMPT_ZH = [
+  '低质量',
+  '最差质量',
+  '低分辨率',
+  '模糊',
+  '失焦',
+  '噪点',
+  '颗粒感',
+  '压缩伪影',
+  'JPEG 伪影',
+  '闪烁',
+  '卡顿',
+  '抖动运动',
+  '跳帧',
+  '时序不一致',
+  '光照不一致',
+  '镜头不稳定',
+  '运动扭曲',
+  '变形',
+  '畸变',
+  '错误人体结构',
+  '错误手部',
+  '多余手指',
+  '缺失手指',
+  '多余肢体',
+  '缺失肢体',
+  '面部异常',
+  '面部扭曲',
+  '眼睛不对称',
+  '重复主体',
+  '克隆脸',
+  '构图差',
+  '裁切错误',
+  '主体出框',
+  '过曝',
+  '欠曝',
+  '过饱和',
+  '水印',
+  '标志',
+  '文字',
+  '字幕',
+  '签名',
+].join('，');
+export const DEFAULT_VIDEO_NEGATIVE_PROMPT = DEFAULT_VIDEO_NEGATIVE_PROMPT_EN;
 
 const STORAGE_KEYS = {
   imageSize: 'agnes:image-size',
@@ -162,8 +249,18 @@ export function saveVideoFrameRatePreference(value: number) {
   writeNumberPreference('videoFrameRate', value, VIDEO_FRAME_RATE_VALUES);
 }
 
-export function readVideoNegativePromptPreference(): string {
-  return readStringPreference('videoNegativePrompt');
+export function getDefaultVideoNegativePrompt(language: 'zh' | 'en'): string {
+  return language === 'zh' ? DEFAULT_VIDEO_NEGATIVE_PROMPT_ZH : DEFAULT_VIDEO_NEGATIVE_PROMPT_EN;
+}
+
+export function isDefaultVideoNegativePrompt(value: string): boolean {
+  const text = value.trim();
+  return text === DEFAULT_VIDEO_NEGATIVE_PROMPT_EN || text === DEFAULT_VIDEO_NEGATIVE_PROMPT_ZH;
+}
+
+export function readVideoNegativePromptPreference(defaultValue = DEFAULT_VIDEO_NEGATIVE_PROMPT): string {
+  const value = readStringPreference('videoNegativePrompt');
+  return value && !isDefaultVideoNegativePrompt(value) ? value : defaultValue;
 }
 
 export function saveVideoNegativePromptPreference(value: string) {

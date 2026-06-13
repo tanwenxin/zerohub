@@ -55,7 +55,9 @@ export function ImageGenerate() {
   const [submitFeedback, setSubmitFeedback] = useState<'idle' | 'accepted'>('idle');
   const [historyKey, setHistoryKey] = useState(0); // 提交后触发历史刷新
   const [formKey, setFormKey] = useState(0); // 回填/清空时强制 PromptForm 重新初始化
+  const [promptAssessKey, setPromptAssessKey] = useState(0);
   const feedbackTimerRef = useRef<number | null>(null);
+  const promptDirtyRef = useRef(false);
 
   const { submit, canSubmit: queueHasRoom, maxActive, submitLocked } = useTaskQueue();
 
@@ -89,6 +91,17 @@ export function ImageGenerate() {
       : mode === 'img2img'
         ? 'page.img2img.placeholder'
         : 'page.multi.placeholder';
+
+  function onPromptChange(value: string) {
+    promptDirtyRef.current = true;
+    setPrompt(value);
+  }
+
+  function onPromptBlur() {
+    if (!promptDirtyRef.current) return;
+    promptDirtyRef.current = false;
+    setPromptAssessKey((k) => k + 1);
+  }
 
   const buttonLabel = needsImage && !enoughImages
     ? t('task.needImages', { count: minImages - imageCount })
@@ -243,14 +256,15 @@ export function ImageGenerate() {
               }}
             />
           )}
-          onPromptChange={setPrompt}
+          onPromptChange={onPromptChange}
+          onPromptBlur={onPromptBlur}
           onSizeChange={onSizeChange}
           onResponseFormatChange={setResponseFormat}
           onSizePreferenceClear={onSizePreferenceClear}
           onSizeValidChange={setSizeValid}
         />
 
-        <PromptCompleteness prompt={prompt} mode={mode} />
+        <PromptCompleteness prompt={prompt} mode={mode} assessKey={promptAssessKey} />
 
         <button
           className={`btn-primary btn-block generate-submit-btn ${accepted ? 'accepted' : ''} ${submitLocked ? 'locked' : ''}`}

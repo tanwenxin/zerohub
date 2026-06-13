@@ -12,6 +12,7 @@ interface Props {
   defaultSize?: string;
   promptAction?: ReactNode;
   onPromptChange: (v: string) => void;
+  onPromptBlur?: () => void;
   onSizeChange: (v: string) => void;
   onResponseFormatChange: (v: ResponseFormat) => void;
   onSizePreferenceClear?: () => void;
@@ -32,6 +33,7 @@ export function PromptForm({
   defaultSize = '1024x1024',
   promptAction,
   onPromptChange,
+  onPromptBlur,
   onSizeChange,
   onResponseFormatChange,
   onSizePreferenceClear,
@@ -63,6 +65,7 @@ export function PromptForm({
             disabled={disabled}
             placeholder={placeholder || t('form.promptPlaceholder')}
             onChange={(e) => onPromptChange(e.target.value)}
+            onBlur={onPromptBlur}
           />
           {promptAction}
         </div>

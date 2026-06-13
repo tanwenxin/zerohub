@@ -1,4 +1,6 @@
 // 与后端交互的 API 封装
+import { getClientSessionId, withSessionQuery } from '../utils/session';
+
 export type ImageTaskType = 'text2img' | 'img2img' | 'multi';
 export type VideoTaskType = 'text2vid' | 'img2vid' | 'multivid' | 'keyframes';
 export type TaskType = ImageTaskType | VideoTaskType;
@@ -83,18 +85,59 @@ export class RateLimitError extends Error {
   }
 }
 
+function stringValue(value: unknown): string {
+  return typeof value === 'string' && value.trim() ? value.trim() : '';
+}
+
+function extractErrorMessage(data: unknown, fallback: string): string {
+  if (!data || typeof data !== 'object') return stringValue(data) || fallback;
+  const record = data as Record<string, unknown>;
+  const error = record.error as unknown;
+  const message = record.message as unknown;
+
+  const candidates = [
+    error && typeof error === 'object' ? (error as Record<string, unknown>).message : null,
+    error && typeof error === 'object' ? (error as Record<string, unknown>).error : null,
+    message && typeof message === 'object' ? (message as Record<string, unknown>).error : null,
+    error,
+    message,
+  ];
+
+  for (const item of candidates) {
+    const text = stringValue(item);
+    if (text) return text;
+  }
+
+  return fallback;
+}
+
+function errorField(data: unknown, field: string): unknown {
+  if (!data || typeof data !== 'object') return undefined;
+  const record = data as Record<string, unknown>;
+  const error = record.error;
+  if (error && typeof error === 'object') return (error as Record<string, unknown>)[field];
+  return record[field];
+}
 
 // 统一处理非 2xx 响应：429 抛 RateLimitError，其余抛普通 Error
 async function throwResponseError(res: Response): Promise<never> {
   const data = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+  const message = extractErrorMessage(data, `HTTP ${res.status}`);
   if (res.status === 429) {
-    throw new RateLimitError(data.error || '请求过于频繁', {
-      category: data.category || 'request',
-      retryAfterMs: Number(data.retryAfterMs) || 0,
-      limit: Number(data.limit) || 0,
+    throw new RateLimitError(message || '请求过于频繁', {
+      category: String(errorField(data, 'category') || 'request'),
+      retryAfterMs: Number(errorField(data, 'retryAfterMs')) || 0,
+      limit: Number(errorField(data, 'limit')) || 0,
     });
   }
-  throw new Error(data.error || `HTTP ${res.status}`);
+  throw new Error(message);
+}
+
+function sessionHeaders(extra?: HeadersInit): HeadersInit {
+  return {
+    ...(extra || {}),
+    'X-Agnes-Session-Id': getClientSessionId(),
+  };
 }
 
 export async function generate(params: GenerateParams): Promise<{ taskId: string }> {
@@ -110,7 +153,7 @@ export async function generate(params: GenerateParams): Promise<{ taskId: string
     for (const f of params.files) form.append('images', f);
   }
 
-  const res = await fetch('/api/generate', { method: 'POST', body: form });
+  const res = await fetch('/api/generate', { method: 'POST', headers: sessionHeaders(), body: form });
   if (!res.ok) await throwResponseError(res);
   return res.json();
 }
@@ -132,13 +175,13 @@ export async function generateVideo(params: VideoGenerateParams): Promise<{ task
     for (const f of params.files) form.append('images', f);
   }
 
-  const res = await fetch('/api/videos', { method: 'POST', body: form });
+  const res = await fetch('/api/videos', { method: 'POST', headers: sessionHeaders(), body: form });
   if (!res.ok) await throwResponseError(res);
   return res.json();
 }
 
 export async function getTask(id: string): Promise<Task> {
-  const res = await fetch(`/api/tasks/${id}`);
+  const res = await fetch(`/api/tasks/${id}`, { headers: sessionHeaders() });
   if (!res.ok) {
     const data = await res.json().catch(() => ({ error: 'Query failed' }));
     throw new Error(data.error || `HTTP ${res.status}`);
@@ -151,7 +194,7 @@ export async function listTasks(category?: 'image' | 'video', limit = 100): Prom
   const qs = new URLSearchParams();
   if (category) qs.set('category', category);
   qs.set('limit', String(limit));
-  const res = await fetch(`/api/tasks?${qs.toString()}`);
+  const res = await fetch(`/api/tasks?${qs.toString()}`, { headers: sessionHeaders() });
   if (!res.ok) {
     const data = await res.json().catch(() => ({ error: 'Query failed' }));
     throw new Error(data.error || `HTTP ${res.status}`);
@@ -163,14 +206,14 @@ export async function listTasks(category?: 'image' | 'video', limit = 100): Prom
 /** 刷新/重试任务：图片走 /tasks/:id/refresh，视频走 /videos/:id/refresh */
 export async function refreshTask(id: string, category: 'image' | 'video'): Promise<{ taskId: string; status: string }> {
   const path = category === 'video' ? `/api/videos/${id}/refresh` : `/api/tasks/${id}/refresh`;
-  const res = await fetch(path, { method: 'POST' });
+  const res = await fetch(path, { method: 'POST', headers: sessionHeaders() });
   if (!res.ok) await throwResponseError(res);
   return res.json();
 }
 
 /** 删除任务（从历史中移除） */
 export async function deleteTask(id: string): Promise<void> {
-  const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+  const res = await fetch(`/api/tasks/${id}`, { method: 'DELETE', headers: sessionHeaders() });
   if (!res.ok) {
     const data = await res.json().catch(() => ({ error: 'Delete failed' }));
     throw new Error(data.error || `HTTP ${res.status}`);
@@ -178,7 +221,7 @@ export async function deleteTask(id: string): Promise<void> {
 }
 
 export function downloadUrl(taskId: string, index: number): string {
-  return `/api/tasks/${taskId}/download/${index}`;
+  return withSessionQuery(`/api/tasks/${taskId}/download/${index}`);
 }
 
 /** 调用文本模型优化提示词，按当前生成模式走对应的结构化规范，返回优化后的提示词 */
@@ -188,7 +231,7 @@ export async function optimizePrompt(
 ): Promise<{ prompt: string }> {
   const res = await fetch('/api/text/optimize-prompt', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: sessionHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ prompt, mode }),
   });
   if (!res.ok) await throwResponseError(res);
@@ -215,7 +258,7 @@ export async function checkPromptCompleteness(
 ): Promise<PromptCompleteness> {
   const res = await fetch('/api/text/prompt-completeness', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: sessionHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ prompt, mode }),
   });
   if (!res.ok) await throwResponseError(res);
@@ -233,7 +276,7 @@ export async function understandImage(
 ): Promise<{ result: string }> {
   const res = await fetch('/api/text/understand-image', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: sessionHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ image, mode, prompt }),
   });
   if (!res.ok) await throwResponseError(res);
@@ -251,7 +294,7 @@ export function fileToDataUri(file: File): Promise<string> {
 }
 
 export function videoDownloadUrl(taskId: string): string {
-  return `/api/videos/${taskId}/download`;
+  return withSessionQuery(`/api/videos/${taskId}/download`);
 }
 
 export interface RateLimitSnapshot {

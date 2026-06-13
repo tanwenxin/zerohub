@@ -16,19 +16,71 @@ const publicDir = path.resolve(__dirname, '..', 'public');
 const publicIndex = path.join(publicDir, 'index.html');
 const publicNotFound = path.join(publicDir, '404.html');
 
+function redactSensitive(value) {
+  if (Array.isArray(value)) return value.map(redactSensitive);
+  if (!value || typeof value !== 'object') return value;
+  const out = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (/key|token|authorization|secret|password/i.test(key)) {
+      out[key] = '[REDACTED]';
+    } else {
+      out[key] = redactSensitive(item);
+    }
+  }
+  return out;
+}
+
+function summarizeBody(body) {
+  if (body == null) return null;
+  const redacted = redactSensitive(body);
+  const text = typeof redacted === 'string' ? redacted : JSON.stringify(redacted);
+  if (text.length <= 2000) return redacted;
+  return {
+    truncated: true,
+    preview: text.slice(0, 2000),
+  };
+}
+
 app.use(cors());
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
-// HTTP 访问日志（跳过高频轮询的 GET /api/tasks 与健康检查，避免日志噪音）
+// HTTP 访问与错误响应日志（跳过高频轮询的 GET /api/tasks 与健康检查，避免日志噪音）
 app.use((req, res, next) => {
-  if (req.path.startsWith('/api')) {
-    const isPolling = req.method === 'GET' && /^\/tasks\//.test(req.path.replace('/api', ''));
-    const isHealth = req.path === '/api/health';
-    if (!isPolling && !isHealth) {
-      logger.info('http.access', { method: req.method, path: req.path });
-    }
+  if (!req.path.startsWith('/api')) return next();
+
+  const startedAt = Date.now();
+  const requestPath = req.originalUrl.split('?')[0];
+  const isPolling = req.method === 'GET' && /^\/tasks\//.test(requestPath.replace('/api', ''));
+  const isHealth = requestPath === '/api/health';
+  const shouldLog = !isPolling && !isHealth;
+
+  if (shouldLog) {
+    logger.info('http.access', { method: req.method, path: requestPath });
   }
+
+  const originalJson = res.json.bind(res);
+  res.json = (body) => {
+    res.locals.responseBody = body;
+    return originalJson(body);
+  };
+
+  res.on('finish', () => {
+    if (!shouldLog || res.statusCode < 400) return;
+    const payload = {
+      method: req.method,
+      path: requestPath,
+      status: res.statusCode,
+      durationMs: Date.now() - startedAt,
+      response: summarizeBody(res.locals.responseBody),
+    };
+    if (res.statusCode >= 500) {
+      logger.error('http.error_response', payload);
+    } else {
+      logger.warn('http.error_response', payload);
+    }
+  });
+
   next();
 });
 
@@ -49,8 +101,9 @@ app.get('*', (req, res, next) => {
 
 // 兜底错误处理
 app.use((err, req, res, next) => {
-  logger.error('server.error', { message: err.message, path: req.path });
-  res.status(err.status || 500).json({ error: err.message || '服务器内部错误' });
+  const status = err.status || 500;
+  logger.error('server.error', { message: err.message, path: req.path, status });
+  res.status(status).json({ error: err.message || '服务器内部错误' });
 });
 
 app.listen(config.port, () => {

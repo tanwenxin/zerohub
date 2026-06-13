@@ -13,6 +13,13 @@ import { notifyTaskFinished } from '../utils/notify';
 import { translate, type Language } from '../i18n';
 import { upsertLocalHistory } from '../utils/localHistory';
 
+const POLL_INTERVAL_MS = 1200;
+
+interface PollingSession {
+  id: number;
+  timerId: number | null;
+}
+
 // 本地任务条目：包含一个标识 + 提交参数摘要 + 服务端任务状态
 export interface LocalTask {
   localId: string;
@@ -37,18 +44,23 @@ function imageSrc(img: { url: string | null; b64: string | null }): string {
  */
 export function useMultiGeneration(language: Language = 'zh') {
   const [tasks, setTasks] = useState<LocalTask[]>([]);
-  const timers = useRef<Map<string, number>>(new Map());
+  const pollingSessions = useRef<Map<string, PollingSession>>(new Map());
+  const nextPollingSessionId = useRef(0);
 
   const updateTask = useCallback((localId: string, patch: Partial<LocalTask>) => {
     setTasks((prev) => prev.map((t) => (t.localId === localId ? { ...t, ...patch } : t)));
   }, []);
 
-  const stopTimer = useCallback((localId: string) => {
-    const id = timers.current.get(localId);
-    if (id) {
-      window.clearInterval(id);
-      timers.current.delete(localId);
+  const stopPolling = useCallback((localId: string) => {
+    const session = pollingSessions.current.get(localId);
+    if (session?.timerId != null) {
+      window.clearTimeout(session.timerId);
     }
+    pollingSessions.current.delete(localId);
+  }, []);
+
+  const isPollingSessionActive = useCallback((localId: string, sessionId: number) => {
+    return pollingSessions.current.get(localId)?.id === sessionId;
   }, []);
 
   // 将提交阶段错误转成对用户友好的文案（重点处理频率超限 429）
@@ -67,15 +79,29 @@ export function useMultiGeneration(language: Language = 'zh') {
   const startPolling = useCallback(
     (local: LocalTask, taskId: string) => {
       const { localId } = local;
-      stopTimer(localId); // 防止重复轮询
+      stopPolling(localId); // 防止重复轮询，同时让旧请求响应失效
       updateTask(localId, { submitError: null, retrying: true });
-      const tick = async () => {
+      const sessionId = nextPollingSessionId.current + 1;
+      nextPollingSessionId.current = sessionId;
+      pollingSessions.current.set(localId, { id: sessionId, timerId: null });
+
+      function scheduleNext() {
+        if (!isPollingSessionActive(localId, sessionId)) return;
+        const timerId = window.setTimeout(() => {
+          void tick();
+        }, POLL_INTERVAL_MS);
+        pollingSessions.current.set(localId, { id: sessionId, timerId });
+      }
+
+      async function tick() {
         try {
           const t = await getTask(taskId);
+          if (!isPollingSessionActive(localId, sessionId)) return;
+
           upsertLocalHistory(t);
           updateTask(localId, { task: t, submitError: null, retrying: false });
           if (t.status === 'done' || t.status === 'error') {
-            stopTimer(localId);
+            stopPolling(localId);
             if (t.status === 'done') {
               const firstImg = t.result?.images?.[0];
               notifyTaskFinished({
@@ -96,17 +122,20 @@ export function useMultiGeneration(language: Language = 'zh') {
                 completedAt: t.updatedAt,
               });
             }
+            return;
           }
+
+          scheduleNext();
         } catch (e) {
-          stopTimer(localId);
+          if (!isPollingSessionActive(localId, sessionId)) return;
+
+          stopPolling(localId);
           updateTask(localId, { submitError: (e as Error).message, retrying: false });
         }
-      };
-      const intervalId = window.setInterval(tick, 1200);
-      timers.current.set(localId, intervalId);
+      }
       void tick(); // 立即查询一次，重试时无需等待 1200ms
     },
-    [language, stopTimer, updateTask]
+    [isPollingSessionActive, language, stopPolling, updateTask]
   );
 
   const submit = useCallback(
@@ -174,18 +203,20 @@ export function useMultiGeneration(language: Language = 'zh') {
 
   const removeTask = useCallback(
     (localId: string) => {
-      stopTimer(localId);
+      stopPolling(localId);
       setTasks((prev) => prev.filter((t) => t.localId !== localId));
     },
-    [stopTimer]
+    [stopPolling]
   );
 
-  // 卸载时清理所有计时器
+  // 卸载时清理所有轮询会话
   useEffect(() => {
-    const map = timers.current;
+    const sessions = pollingSessions.current;
     return () => {
-      for (const id of map.values()) window.clearInterval(id);
-      map.clear();
+      for (const session of sessions.values()) {
+        if (session.timerId != null) window.clearTimeout(session.timerId);
+      }
+      sessions.clear();
     };
   }, []);
 

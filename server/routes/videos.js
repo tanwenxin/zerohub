@@ -10,7 +10,9 @@ const videoClient = require('../services/videoClient');
 const imgbbClient = require('../services/imgbbClient');
 const logger = require('../services/logger');
 const { keyPool } = require('../services/keyPool');
+const { assertGenerationTextAllowed } = require('../services/contentModeration');
 const { bufferToDataUri, isValidImageInput } = require('../utils/image');
+const { getRequestOwnerId, canAccessTask } = require('../utils/requestOwner');
 
 const router = express.Router();
 const upload = multer({
@@ -285,12 +287,21 @@ async function runVideoTask(task, input) {
  */
 router.post('/videos', upload.array('images', 8), (req, res) => {
   const { type, prompt, negativePrompt, width, height, numFrames, frameRate, seed } = req.body;
+  const ownerId = getRequestOwnerId(req);
 
   if (!VALID_TYPES.includes(type)) {
     return res.status(400).json({ error: `type 非法，应为 ${VALID_TYPES.join('/')}` });
   }
+  if (!ownerId) {
+    return res.status(400).json({ error: '缺少有效会话标识，请刷新页面后重试' });
+  }
   if (!prompt || !prompt.trim()) {
     return res.status(400).json({ error: 'prompt 不能为空' });
+  }
+  try {
+    assertGenerationTextAllowed({ prompt, negativePrompt });
+  } catch (err) {
+    return res.status(err.status || 400).json({ error: err.message, code: err.code || 'CONTENT_POLICY' });
   }
   const paramError = validateVideoParams({ width, height, numFrames, frameRate, seed });
   if (paramError) {
@@ -317,9 +328,9 @@ router.post('/videos', upload.array('images', 8), (req, res) => {
     if ((type === 'multivid' || type === 'keyframes') && image.length < 2) {
       return res.status(400).json({ error: '多图视频/关键帧动画至少需要 2 张输入图片' });
     }
-    const invalid = image.find((v) => !isValidImageInput(v));
+    const invalid = image.find((v) => !isValidImageInput(v, { requireHttps: true }));
     if (invalid) {
-      return res.status(400).json({ error: '存在非法图片输入，必须为 http(s) URL 或 Data URI' });
+      return res.status(400).json({ error: '存在非法图片输入，必须为 HTTPS URL 或图片 Data URI' });
     }
   }
 
@@ -348,6 +359,7 @@ router.post('/videos', upload.array('images', 8), (req, res) => {
 
   const task = taskStore.create(type, payloadPreview, {
     category: 'video',
+    ownerId,
     status: 'pending',
     params: {
       type,
@@ -420,6 +432,7 @@ function rebuildVideoInput(task) {
 router.post('/videos/:id/refresh', (req, res) => {
   const task = taskStore.get(req.params.id);
   if (!task) return res.status(404).json({ error: '任务不存在或已过期' });
+  if (!canAccessTask(req, task)) return res.status(404).json({ error: '任务不存在或已过期' });
   if (task.category !== 'video') return res.status(400).json({ error: '该任务不是视频任务' });
   if (task.status === 'done') return res.json({ taskId: task.id, status: task.status });
 
@@ -461,6 +474,7 @@ router.get('/videos/:id/download', async (req, res) => {
   if (!task || task.status !== 'done' || !task.result || !task.result.videoUrl) {
     return res.status(404).json({ error: '视频结果不存在' });
   }
+  if (!canAccessTask(req, task)) return res.status(404).json({ error: '视频结果不存在' });
   const filename = `agnes-video-${task.id.slice(0, 8)}.mp4`;
   try {
     const upstream = await axios.get(task.result.videoUrl, { responseType: 'stream' });
