@@ -20,6 +20,7 @@ import {
   type HistoryStatusFilter,
 } from './HistoryToolbar';
 import { BlobDownloadButton } from './BlobDownloadButton';
+import { HistoryAdSlot } from './HistoryAdSlot';
 import { usePreferences } from '../usePreferences';
 import { formatDuration } from '../utils/duration';
 import type { TranslationKey } from '../i18n';
@@ -310,11 +311,26 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
     window.setTimeout(() => setPromptCopied(false), 1800);
   }
 
-  if (loading) return <div className="empty">{t('history.loading')}</div>;
-  if (!tasks.length) return <div className="empty">{t('history.empty')}</div>;
+  if (loading) {
+    return (
+      <div className="history">
+        <HistoryAdSlot category={category} />
+        <div className="empty">{t('history.loading')}</div>
+      </div>
+    );
+  }
+  if (!tasks.length) {
+    return (
+      <div className="history">
+        <HistoryAdSlot category={category} />
+        <div className="empty">{t('history.empty')}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="history">
+      <HistoryAdSlot category={category} />
       <p className="history-subtitle">{t('history.count', { count: tasks.length })}</p>
       {showToolbar && (
         <HistoryToolbar

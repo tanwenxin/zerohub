@@ -724,6 +724,83 @@ main {
   color: var(--muted);
 }
 
+.history-ad-slot {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  margin: 0 0 16px;
+  padding: 10px;
+  border: 1px solid color-mix(in oklab, var(--border) 86%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in oklab, var(--panel-2) 74%, transparent);
+  overflow: hidden;
+}
+.history-ad-label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1;
+  text-align: center;
+}
+.history-ad-unit {
+  display: block;
+  min-height: 72px;
+}
+.history-ad-slot-mock {
+  min-height: 118px;
+  padding: 0;
+}
+.history-ad-mock-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 92px;
+  padding: 14px;
+  border: 1px solid color-mix(in oklab, var(--accent) 24%, transparent);
+  border-radius: calc(var(--radius-md) - 1px);
+  background:
+    radial-gradient(circle at 8% 20%, color-mix(in oklab, var(--accent) 22%, transparent), transparent 38%),
+    linear-gradient(135deg, color-mix(in oklab, var(--surface-warm) 82%, black 18%), var(--surface));
+}
+.history-ad-mock-copy {
+  min-width: 0;
+}
+.history-ad-mock-kicker {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--meta);
+  font: 700 11px / 1 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.history-ad-mock-copy strong {
+  display: block;
+  color: var(--fg);
+  font-size: 15px;
+  line-height: 1.25;
+}
+.history-ad-mock-copy p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.history-ad-mock-cta {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--accent-on);
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
 .site-footer-seo {
   display: flex;
   flex-wrap: wrap;
