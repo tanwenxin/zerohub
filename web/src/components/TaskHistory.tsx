@@ -21,6 +21,7 @@ import {
 } from './HistoryToolbar';
 import { BlobDownloadButton } from './BlobDownloadButton';
 import { HistoryAdSlot } from './HistoryAdSlot';
+import { MasonryGrid } from './MasonryGrid';
 import { usePreferences } from '../usePreferences';
 import { formatDuration } from '../utils/duration';
 import type { TranslationKey } from '../i18n';
@@ -346,7 +347,7 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
       {(searchText.trim() || statusFilter !== 'all') && visibleTasks.length === 0 ? (
         <div className="empty history-empty-filter">{t('history.noMatches')}</div>
       ) : (
-      <div className="task-history-list layout-masonry">
+      <MasonryGrid className="task-history-list" gap={12} minColumnWidth={220} maxColumns={2}>
         {visibleTasks.map((task) => {
           const isActive = ACTIVE_STATUSES.includes(task.status);
           const isError = task.status === 'error';
@@ -519,7 +520,7 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
             </div>
           );
         })}
-      </div>
+      </MasonryGrid>
       )}
       {pendingTask && (
         <div className="prompt-confirm-backdrop" role="presentation" onClick={() => setPendingTask(null)}>

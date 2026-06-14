@@ -7,7 +7,7 @@ const textClient = require('../services/textClient');
 const logger = require('../services/logger');
 const { keyPool } = require('../services/keyPool');
 const { isValidImageInput } = require('../utils/image');
-const { assertGenerationTextAllowed } = require('../services/contentModeration');
+const { assertGenerationTextAllowed, sanitizeText } = require('../services/contentModeration');
 const {
   isValidMode,
   ALL_MODES,
@@ -272,6 +272,24 @@ router.post('/text/prompt-completeness', async (req, res) => {
     });
     return sendDirectError(res, err);
   }
+});
+
+/**
+ * POST /api/text/sanitize-prompt
+ * body: { prompt: string }
+ * 去除提示词中命中违规策略的敏感词（如露骨色情/性剥削相关词汇），
+ * 便于用户在「重新评估」时一键清洗后重新提交，无需手动逐字修改。
+ * 同步返回 { prompt: <清洗后的提示词>, changed: boolean, removed: string[] }
+ */
+router.post('/text/sanitize-prompt', (req, res) => {
+  const { prompt } = req.body || {};
+  if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+    return sendDirectError(res, { status: 400, code: 'REQUEST_ERROR', message: 'prompt 不能为空' });
+  }
+
+  const result = sanitizeText(prompt);
+  logger.info('text.sanitize.completed', { changed: result.changed, removed: result.removed.length });
+  return res.json({ prompt: result.text, changed: result.changed, removed: result.removed });
 });
 
 module.exports = router;

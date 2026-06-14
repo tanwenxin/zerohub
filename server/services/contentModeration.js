@@ -73,6 +73,49 @@ function assertGenerationTextAllowed(fields) {
   }
 }
 
+// 所有违规策略对应的 code，用于前端判断是否可走「敏感词清洗」流程
+const MODERATION_CODES = POLICY_RULES.map((rule) => rule.code);
+
+/**
+ * 去除文本中命中违规策略的敏感词：把匹配片段替换为空白，再做空白与标点收敛。
+ * 用于「重新评估」时自动清洗用户提示词，避免手动逐字修改。
+ * @param {string} text 原始文本
+ * @returns {{ text: string, changed: boolean, removed: string[] }}
+ */
+function sanitizeText(text) {
+  let value = String(text || '');
+  const removed = [];
+
+  for (const rule of POLICY_RULES) {
+    for (const pattern of rule.patterns) {
+      const flags = pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`;
+      const global = new RegExp(pattern.source, flags);
+      value = value.replace(global, (match) => {
+        const hit = match.trim();
+        if (hit) removed.push(hit);
+        return ' ';
+      });
+    }
+  }
+
+  // 收敛清洗后残留的多余空白与悬空标点
+  const cleaned = value
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\s+([,，。.!！?？、])/g, '$1')
+    .replace(/([(（])\s+/g, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+
+  return {
+    text: cleaned,
+    changed: cleaned !== String(text || '').trim(),
+    removed,
+  };
+}
+
 module.exports = {
   assertGenerationTextAllowed,
+  inspectText,
+  sanitizeText,
+  MODERATION_CODES,
 };

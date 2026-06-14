@@ -85,6 +85,18 @@ export class RateLimitError extends Error {
   }
 }
 
+// 通用 API 错误：携带后端返回的 code，供前端按错误类型分支处理（如内容违规清洗）
+export class ApiError extends Error {
+  code: string | null;
+  status: number | null;
+  constructor(message: string, opts: { code?: string | null; status?: number | null } = {}) {
+    super(message);
+    this.name = 'ApiError';
+    this.code = opts.code ?? null;
+    this.status = opts.status ?? null;
+  }
+}
+
 function stringValue(value: unknown): string {
   return typeof value === 'string' && value.trim() ? value.trim() : '';
 }
@@ -130,7 +142,8 @@ async function throwResponseError(res: Response): Promise<never> {
       limit: Number(errorField(data, 'limit')) || 0,
     });
   }
-  throw new Error(message);
+  const code = errorField(data, 'code');
+  throw new ApiError(message, { code: code != null ? String(code) : null, status: res.status });
 }
 
 function sessionHeaders(extra?: HeadersInit): HeadersInit {
@@ -260,6 +273,22 @@ export async function checkPromptCompleteness(
     method: 'POST',
     headers: sessionHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ prompt, mode }),
+  });
+  if (!res.ok) await throwResponseError(res);
+  return res.json();
+}
+
+/**
+ * 调用后端去除提示词中命中违规策略的敏感词（如露骨色情/性剥削相关词汇），
+ * 返回清洗后的提示词，便于用户重新评估与提交，无需手动修改。
+ */
+export async function sanitizePrompt(
+  prompt: string
+): Promise<{ prompt: string; changed: boolean; removed: string[] }> {
+  const res = await fetch('/api/text/sanitize-prompt', {
+    method: 'POST',
+    headers: sessionHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ prompt }),
   });
   if (!res.ok) await throwResponseError(res);
   return res.json();

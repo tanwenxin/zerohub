@@ -296,7 +296,12 @@ export function VideoGenerate() {
           </div>
         </label>
 
-        <PromptCompleteness prompt={prompt} mode={mode} assessKey={promptAssessKey} />
+        <PromptCompleteness
+          prompt={prompt}
+          mode={mode}
+          assessKey={promptAssessKey}
+          onSanitized={setPrompt}
+        />
 
         <label className="field">
           <span>{t('video.negativePrompt')}</span>

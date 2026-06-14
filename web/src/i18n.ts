@@ -401,6 +401,13 @@ const zh = {
   'completeness.level.strong': '描述充分',
   'completeness.missing': '建议补充',
   'completeness.suggestions': '改进建议',
+  'completeness.sanitizeHint': '检测到提示词包含违规内容，可一键清除敏感词后重新评估。',
+  'completeness.sanitizeAction': '清除敏感词并重新评估',
+  'completeness.sanitizing': '正在清除敏感词…',
+  'completeness.sanitizeDone': '已清除敏感词，正在重新评估。',
+  'completeness.sanitizeNoChange': '未发现可自动清除的敏感词，请手动调整提示词。',
+  'completeness.sanitizeEmpty': '清除敏感词后提示词为空，请补充其他描述。',
+  'completeness.sanitizeError': '清除敏感词失败，请稍后重试',
 };
 
 const en: Record<keyof typeof zh, string> = {
@@ -813,6 +820,13 @@ const en: Record<keyof typeof zh, string> = {
   'completeness.level.strong': 'Strong',
   'completeness.missing': 'Consider adding',
   'completeness.suggestions': 'Suggestions',
+  'completeness.sanitizeHint': 'The prompt contains disallowed content. You can remove the flagged terms and re-evaluate in one click.',
+  'completeness.sanitizeAction': 'Remove flagged terms & re-evaluate',
+  'completeness.sanitizing': 'Removing flagged terms…',
+  'completeness.sanitizeDone': 'Flagged terms removed, re-evaluating.',
+  'completeness.sanitizeNoChange': 'No removable flagged terms found. Please edit the prompt manually.',
+  'completeness.sanitizeEmpty': 'The prompt is empty after removing flagged terms. Please add more details.',
+  'completeness.sanitizeError': 'Failed to remove flagged terms, please retry',
 };
 
 export type TranslationKey = keyof typeof zh;

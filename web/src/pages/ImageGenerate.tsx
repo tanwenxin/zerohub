@@ -264,7 +264,15 @@ export function ImageGenerate() {
           onSizeValidChange={setSizeValid}
         />
 
-        <PromptCompleteness prompt={prompt} mode={mode} assessKey={promptAssessKey} />
+        <PromptCompleteness
+          prompt={prompt}
+          mode={mode}
+          assessKey={promptAssessKey}
+          onSanitized={(text) => {
+            setPrompt(text);
+            setFormKey((k) => k + 1);
+          }}
+        />
 
         <button
           className={`btn-primary btn-block generate-submit-btn ${accepted ? 'accepted' : ''} ${submitLocked ? 'locked' : ''}`}

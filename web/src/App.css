@@ -1412,9 +1412,16 @@ select:focus {
 }
 .completeness-foot {
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  margin-top: 12px;
+}
+.completeness-foot-actions {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--space-3);
-  margin-top: 12px;
 }
 .completeness-error {
   margin: 0;
@@ -2448,19 +2455,6 @@ input[type='number']:focus {
   .layout-toggle button {
     flex: 1;
   }
-
-  .task-history-list.layout-masonry {
-    column-count: 1;
-  }
-
-  .task-history-list.layout-list .gallery-item {
-    grid-template-columns: 1fr;
-  }
-
-  .task-history-list.layout-list .media-preview-trigger img {
-    height: auto;
-    min-height: 0;
-  }
 }
 
 @media (max-width: 360px) {
@@ -2513,15 +2507,21 @@ input[type='number']:focus {
 
 /* ===== 任务历史列表 ===== */
 .task-history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   margin-top: 10px;
 }
-.task-history-list.layout-masonry {
-  display: block;
-  column-count: 2;
-  column-gap: 12px;
+/* JS 瀑布流：容器相对定位，item 绝对定位按真实高度堆砌 */
+.masonry-grid {
+  width: 100%;
+}
+.masonry-grid.is-ready .masonry-item {
+  transition: transform 0.22s var(--ease-standard, ease);
+}
+.masonry-item {
+  box-sizing: border-box;
+}
+.masonry-item > .history-item {
+  width: 100%;
+  margin: 0;
 }
 .history-item {
   border: 1px solid var(--border);
@@ -2531,12 +2531,7 @@ input[type='number']:focus {
   transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease, opacity 0.18s ease;
   animation: history-card-in 0.22s ease both;
 }
-.task-history-list.layout-masonry .history-item {
-  break-inside: avoid;
-  margin: 0 0 12px;
-}
-.task-history-list.layout-list .history-item:hover,
-.task-history-list.layout-masonry .history-item:hover {
+.history-item:hover {
   border-color: rgba(37, 99, 235, 0.38);
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
 }
@@ -2556,24 +2551,8 @@ input[type='number']:focus {
   color: var(--primary);
   background: rgba(37, 99, 235, 0.1);
 }
-.task-history-list.layout-list .gallery {
-  grid-template-columns: 1fr;
-}
-.task-history-list.layout-list .gallery-item {
-  display: grid;
-  grid-template-columns: minmax(132px, 220px) minmax(0, 1fr);
-  align-items: stretch;
-}
-.task-history-list.layout-list .media-preview-trigger img {
-  height: 100%;
-  min-height: 132px;
-  object-fit: cover;
-}
-.task-history-list.layout-list .gallery-actions {
-  align-content: center;
-  padding: 12px;
-}
-.task-history-list.layout-masonry .gallery {
+/* 瀑布流卡片内部画廊固定单列，避免在窄列里挤压缩略图 */
+.history-item .gallery {
   grid-template-columns: 1fr;
 }
 @keyframes history-card-in {
@@ -2841,19 +2820,6 @@ input[type='number']:focus {
 }
 
 @media (max-width: 480px) {
-  .task-history-list.layout-masonry {
-    column-count: 1;
-  }
-
-  .task-history-list.layout-list .gallery-item {
-    grid-template-columns: 1fr;
-  }
-
-  .task-history-list.layout-list .media-preview-trigger img {
-    height: auto;
-    min-height: 0;
-  }
-
   .prompt-detail-backdrop {
     align-items: flex-end;
     padding: 10px;

@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { checkPromptCompleteness, type PromptCompleteness, type TaskType } from '../api/client';
+import {
+  ApiError,
+  checkPromptCompleteness,
+  sanitizePrompt,
+  type PromptCompleteness,
+  type TaskType,
+} from '../api/client';
 import { usePreferences } from '../usePreferences';
 import type { TranslationKey } from '../i18n';
 
@@ -7,9 +13,19 @@ interface Props {
   prompt: string;
   mode: TaskType;
   assessKey: number;
+  onSanitized?: (text: string) => void;
 }
 
 type Status = 'idle' | 'loading' | 'done' | 'error';
+
+// 命中内容安全策略的错误码：完整度评估失败若为这些码，说明提示词包含违规内容，可一键清洗
+const MODERATION_CODES = new Set([
+  'SEXUAL_EXPLICIT',
+  'VIOLENCE_HARM',
+  'HATE_HARASSMENT',
+  'ILLEGAL_DECEPTIVE',
+  'PUBLIC_FIGURE_DECEPTION',
+]);
 
 // 触发评估的最小有效字符数，避免对极短输入频繁请求
 const MIN_PROMPT_LENGTH = 8;
@@ -34,11 +50,14 @@ function ringColor(level: PromptCompleteness['level']): string {
  * 用户修改提示词并离开输入框后（防抖），调用后台文本模型按当前模式规范评估完整度，
  * 展示评分环、完整度等级、概述、薄弱维度与改进建议。失败可手动重试。
  */
-export function PromptCompleteness({ prompt, mode, assessKey }: Props) {
+export function PromptCompleteness({ prompt, mode, assessKey, onSanitized }: Props) {
   const { t } = usePreferences();
   const [status, setStatus] = useState<Status>('idle');
   const [result, setResult] = useState<PromptCompleteness | null>(null);
   const [errorMessage, setErrorMessage] = useState('');
+  const [violation, setViolation] = useState(false); // 当前错误是否为内容违规（可一键清洗）
+  const [sanitizing, setSanitizing] = useState(false);
+  const [sanitizeNote, setSanitizeNote] = useState('');
   const reqIdRef = useRef(0);
   const timerRef = useRef<number | null>(null);
   const resetTimerRef = useRef<number | null>(null);
@@ -54,6 +73,8 @@ export function PromptCompleteness({ prompt, mode, assessKey }: Props) {
     const reqId = ++reqIdRef.current;
     setStatus('loading');
     setErrorMessage('');
+    setViolation(false);
+    setSanitizeNote('');
     try {
       const res = await checkPromptCompleteness(value, currentMode);
       if (reqId !== reqIdRef.current) return; // 已有更新的请求，丢弃本次结果
@@ -63,9 +84,33 @@ export function PromptCompleteness({ prompt, mode, assessKey }: Props) {
     } catch (err) {
       if (reqId !== reqIdRef.current) return;
       setErrorMessage(err instanceof Error ? err.message : '');
+      setViolation(err instanceof ApiError && !!err.code && MODERATION_CODES.has(err.code));
       setStatus('error');
     }
   }, []);
+
+  // 一键清洗：去除提示词中的违规敏感词后回填，并对清洗结果重新发起评估
+  const sanitizeAndReassess = useCallback(async () => {
+    if (sanitizing || !onSanitized) return;
+    setSanitizing(true);
+    setSanitizeNote('');
+    try {
+      const res = await sanitizePrompt(trimmed);
+      const next = res.prompt.trim();
+      if (!next) {
+        setSanitizeNote(t('completeness.sanitizeEmpty'));
+        return;
+      }
+      onSanitized(next);
+      lastCompletedKeyRef.current = '';
+      setSanitizeNote(res.changed ? t('completeness.sanitizeDone') : t('completeness.sanitizeNoChange'));
+      void run(next, mode);
+    } catch (err) {
+      setSanitizeNote(err instanceof Error ? err.message : t('completeness.sanitizeError'));
+    } finally {
+      setSanitizing(false);
+    }
+  }, [mode, onSanitized, run, sanitizing, t, trimmed]);
 
   // prompt / mode 变化时只作废旧请求和旧结果，不主动发起评估。
   useEffect(() => {
@@ -133,14 +178,30 @@ export function PromptCompleteness({ prompt, mode, assessKey }: Props) {
           {status === 'error' && (
             <div className="completeness-foot">
               <p className="completeness-error">{errorMessage || t('completeness.error')}</p>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={() => void run(trimmed, mode)}
-                disabled={tooShort}
-              >
-                {t('completeness.retry')}
-              </button>
+              {violation && onSanitized && (
+                <p className="completeness-state">{t('completeness.sanitizeHint')}</p>
+              )}
+              <div className="completeness-foot-actions">
+                {violation && onSanitized && (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => void sanitizeAndReassess()}
+                    disabled={sanitizing}
+                  >
+                    {sanitizing ? t('completeness.sanitizing') : t('completeness.sanitizeAction')}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => void run(trimmed, mode)}
+                  disabled={tooShort || sanitizing}
+                >
+                  {t('completeness.retry')}
+                </button>
+              </div>
+              {sanitizeNote && <p className="completeness-state">{sanitizeNote}</p>}
             </div>
           )}
         </div>

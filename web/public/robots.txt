@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://agnes-image-studio.xyz/sitemap.xml
+Sitemap: https://your-domain.xyz/sitemap.xml
