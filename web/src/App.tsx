@@ -8,6 +8,7 @@ import { useTaskQueue } from './useTaskQueue';
 import { SiteFooter } from './components/SiteFooter';
 import type { TranslationKey } from './i18n';
 import { getSeoLandingRouteByPath } from './seoLandingRoutes';
+import { prefetchRoute } from './routePrefetch';
 
 type RouteKey = 'home' | 'image' | 'video' | 'guides' | 'about' | 'privacy' | 'terms' | 'contact' | 'notFound';
 
@@ -123,6 +124,9 @@ export default function App() {
     const run = () => {
       setNonCriticalReady(true);
       void initializeBackgroundNotifications();
+      // 空闲时预取最常访问的工具页 chunk，使后续点击切换近乎瞬时。
+      prefetchRoute('/image');
+      prefetchRoute('/video');
     };
     let cleanupScheduled: (() => void) | null = null;
     const schedule = () => {
@@ -183,6 +187,9 @@ export default function App() {
                 to={item.path}
                 end={item.path === '/'}
                 className={({ isActive }) => (isActive ? 'is-active' : '')}
+                onMouseEnter={() => prefetchRoute(item.path)}
+                onFocus={() => prefetchRoute(item.path)}
+                onTouchStart={() => prefetchRoute(item.path)}
               >
                 {t(item.labelKey)}
               </NavLink>

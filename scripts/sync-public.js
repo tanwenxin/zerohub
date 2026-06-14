@@ -34,9 +34,14 @@ function readEnvFiles(filePaths) {
   return { values, loadedFiles };
 }
 
-function copyDir(src, dest) {
+// 仅构建期使用、运行时不引用的中间产物，不发布到生产静态目录。
+// 注意：static-loader-data-manifest-*.json 会被运行时 fetch（data router loader），必须保留，不在此列。
+const EXCLUDED_TOP_LEVEL = new Set(['.vite']);
+
+function copyDir(src, dest, isRoot = false) {
   fs.mkdirSync(dest, { recursive: true });
   for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    if (isRoot && EXCLUDED_TOP_LEVEL.has(entry.name)) continue;
     const from = path.join(src, entry.name);
     const to = path.join(dest, entry.name);
     if (entry.isDirectory()) {
@@ -86,7 +91,7 @@ if (!fs.existsSync(path.join(distDir, 'index.html'))) {
 }
 
 fs.rmSync(publicDir, { recursive: true, force: true });
-copyDir(distDir, publicDir);
+copyDir(distDir, publicDir, true);
 
 const { values: envValues, loadedFiles } = readEnvFiles([
   path.join(rootDir, '.env'),

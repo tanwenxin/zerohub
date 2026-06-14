@@ -11,6 +11,21 @@ export default defineConfig({
     modulePreload: {
       polyfill: false,
     },
+    rollupOptions: {
+      output: {
+        // 将框架核心（react / react-dom / scheduler / react-router）固化为单一长缓存 vendor chunk，
+        // 业务代码更新时不会使框架缓存失效，提升二次访问与跨页面命中率。
+        manualChunks(id: string) {
+          if (!id.includes('node_modules')) return undefined;
+          if (
+            /[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/.test(id)
+          ) {
+            return 'vendor-react';
+          }
+          return undefined;
+        },
+      },
+    },
   },
   server: {
     port: 5173,
