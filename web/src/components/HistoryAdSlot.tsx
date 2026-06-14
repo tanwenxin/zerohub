@@ -13,7 +13,7 @@ declare global {
 
 const adsenseClient = (import.meta.env.VITE_ADSENSE_CLIENT as string | undefined)?.trim();
 const historyAdSlot = (import.meta.env.VITE_ADSENSE_HISTORY_SLOT as string | undefined)?.trim();
-const mockAdsEnabled = import.meta.env.DEV || import.meta.env.VITE_ADSENSE_MOCK === '1';
+const mockAdsEnabled = import.meta.env.VITE_ADSENSE_MOCK === '1';
 
 interface HistoryAdSlotProps {
   category: 'image' | 'video';
