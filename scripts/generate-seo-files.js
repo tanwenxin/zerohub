@@ -25,7 +25,7 @@ const webEnv = {
   ...readEnvFile(path.join(webDir, '.env.local')),
 };
 
-const siteUrl = (process.env.SITE_URL || process.env.VITE_SITE_URL || webEnv.VITE_SITE_URL || 'https://agnes-image-studio.xyz')
+const siteUrl = (process.env.VITE_SITE_URL || webEnv.VITE_SITE_URL || 'https://agnes-image-studio.xyz')
   .replace(/\/+$/, '');
 
 const routes = [

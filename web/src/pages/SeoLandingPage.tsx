@@ -1,7 +1,10 @@
 import { Link, Navigate, useLocation } from 'react-router-dom';
+import { Head } from 'vite-react-ssg';
 import { Badge, ButtonLink, Card, Container, Eyebrow, Grid, Section } from '../components/ui';
 import { getSeoLandingPageByPath, SEO_LANDING_PAGES } from '../seoLandingPages';
 import { usePreferences } from '../usePreferences';
+
+const SITE_URL = (import.meta.env.VITE_SITE_URL || 'https://agnes-image-studio.xyz').replace(/\/+$/, '');
 
 export function SeoLandingPage() {
   const { language } = usePreferences();
@@ -14,9 +17,37 @@ export function SeoLandingPage() {
   const relatedPages = SEO_LANDING_PAGES.filter(
     (item) => item.path !== page.path && item.toolPath === page.toolPath
   ).slice(0, 3);
+  const canonicalUrl = `${SITE_URL}${page.path}`;
+  const structuredData = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: content.faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.answer,
+      },
+    })),
+  };
 
   return (
     <div className="seo-page">
+      <Head>
+        <title>{content.title}</title>
+        <meta name="description" content={content.description} />
+        <meta name="keywords" content={page.keywords.join(', ')} />
+        <meta name="robots" content="index,follow" />
+        <link rel="canonical" href={canonicalUrl} />
+        <meta property="og:type" content="article" />
+        <meta property="og:title" content={content.title} />
+        <meta property="og:description" content={content.description} />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta name="twitter:card" content="summary" />
+        <meta name="twitter:title" content={content.title} />
+        <meta name="twitter:description" content={content.description} />
+        <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
+      </Head>
       <Section>
         <Container className="seo-hero">
           <div>

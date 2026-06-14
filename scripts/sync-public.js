@@ -4,8 +4,22 @@ const fs = require('fs');
 const path = require('path');
 
 const rootDir = path.resolve(__dirname, '..');
+const webDir = path.join(rootDir, 'web');
 const distDir = path.join(rootDir, 'web', 'dist');
 const publicDir = path.join(rootDir, 'public');
+
+function readEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) return {};
+  return fs.readFileSync(filePath, 'utf8').split(/\r?\n/).reduce((acc, line) => {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) return acc;
+    const match = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(trimmed);
+    if (!match) return acc;
+    const value = match[2].trim().replace(/^['"]|['"]$/g, '');
+    acc[match[1]] = value;
+    return acc;
+  }, {});
+}
 
 function copyDir(src, dest) {
   fs.mkdirSync(dest, { recursive: true });
@@ -60,9 +74,14 @@ if (!fs.existsSync(path.join(distDir, 'index.html'))) {
 fs.rmSync(publicDir, { recursive: true, force: true });
 copyDir(distDir, publicDir);
 
-const siteUrl = normalizeSiteUrl(process.env.SITE_URL || process.env.VITE_SITE_URL);
+const webEnv = {
+  ...readEnvFile(path.join(webDir, '.env')),
+  ...readEnvFile(path.join(webDir, '.env.local')),
+};
+
+const siteUrl = normalizeSiteUrl(process.env.VITE_SITE_URL || webEnv.VITE_SITE_URL);
 absolutizeSitemap(publicDir, siteUrl);
 updateRobots(publicDir, siteUrl);
-writeAdsTxt(publicDir, process.env.ADSENSE_PUBLISHER_ID || process.env.VITE_ADSENSE_PUBLISHER_ID);
+writeAdsTxt(publicDir, process.env.VITE_ADSENSE_PUBLISHER_ID || webEnv.VITE_ADSENSE_PUBLISHER_ID);
 
 console.log(`Synced ${distDir} -> ${publicDir}`);

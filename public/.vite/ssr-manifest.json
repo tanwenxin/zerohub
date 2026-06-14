@@ -1,6 +1,11 @@
 {
-  "\u0000rolldown/runtime.js": [],
-  "\u0000vite/modulepreload-polyfill.js": [],
+  "\u0000@oxc-project+runtime@0.133.0/helpers/esm/defineProperty.js": [],
+  "\u0000@oxc-project+runtime@0.133.0/helpers/esm/toPrimitive.js": [],
+  "\u0000@oxc-project+runtime@0.133.0/helpers/esm/toPropertyKey.js": [],
+  "\u0000@oxc-project+runtime@0.133.0/helpers/esm/typeof.js": [],
+  "\u0000rolldown/runtime.js": [
+    "/assets/react-C1VktWof.js"
+  ],
   "\u0000vite/preload-helper.js": [],
   "index.html": [],
   "node_modules/@remix-run/router/dist/router.js": [],
@@ -9,26 +14,34 @@
   "node_modules/prop-types/index.js": [],
   "node_modules/prop-types/lib/ReactPropTypesSecret.js": [],
   "node_modules/react-dom/cjs/react-dom-client.production.js": [
-    "/assets/client-D5-DdL35.js"
+    "/assets/client-DYcRt70C.js"
   ],
-  "node_modules/react-dom/cjs/react-dom.production.js": [],
+  "node_modules/react-dom/cjs/react-dom.production.js": [
+    "/assets/react-dom-Bq2kdtnU.js"
+  ],
   "node_modules/react-dom/client.js": [
-    "/assets/client-D5-DdL35.js"
+    "/assets/client-DYcRt70C.js"
   ],
-  "node_modules/react-dom/index.js": [],
+  "node_modules/react-dom/index.js": [
+    "/assets/react-dom-Bq2kdtnU.js"
+  ],
   "node_modules/react-fast-compare/index.js": [],
   "node_modules/react-helmet-async/lib/index.module.js": [],
   "node_modules/react-router-dom/dist/index.js": [],
   "node_modules/react-router/dist/index.js": [],
   "node_modules/react/cjs/react-jsx-runtime.production.js": [],
-  "node_modules/react/cjs/react.production.js": [],
-  "node_modules/react/index.js": [],
+  "node_modules/react/cjs/react.production.js": [
+    "/assets/react-C1VktWof.js"
+  ],
+  "node_modules/react/index.js": [
+    "/assets/react-C1VktWof.js"
+  ],
   "node_modules/react/jsx-runtime.js": [],
   "node_modules/scheduler/cjs/scheduler.production.js": [
-    "/assets/client-D5-DdL35.js"
+    "/assets/client-DYcRt70C.js"
   ],
   "node_modules/scheduler/index.js": [
-    "/assets/client-D5-DdL35.js"
+    "/assets/client-DYcRt70C.js"
   ],
   "node_modules/shallowequal/index.js": [],
   "node_modules/vite-react-ssg/dist/index.mjs": [],
@@ -40,24 +53,58 @@
   "src/App.tsx": [],
   "src/RootLayout.tsx": [],
   "src/api/client.ts": [],
-  "src/components/AdsenseScript.tsx": [],
-  "src/components/BlobDownloadButton.tsx": [],
-  "src/components/CookieConsentBanner.tsx": [],
-  "src/components/HistoryToolbar.tsx": [],
-  "src/components/ImageUnderstandPanel.tsx": [],
-  "src/components/MediaPreviewModal.tsx": [],
-  "src/components/ProgressBar.tsx": [],
-  "src/components/PromptCompleteness.tsx": [],
-  "src/components/PromptForm.tsx": [],
-  "src/components/PromptOptimizeButton.tsx": [],
-  "src/components/ResultGallery.tsx": [],
+  "src/components/AdsenseScript.tsx": [
+    "/assets/AdsenseScript-BtVz6D4i.js"
+  ],
+  "src/components/BlobDownloadButton.tsx": [
+    "/assets/BlobDownloadButton-AM4pgon8.js"
+  ],
+  "src/components/CookieConsentBanner.tsx": [
+    "/assets/CookieConsentBanner-C688QVBJ.js"
+  ],
+  "src/components/HistoryToolbar.tsx": [
+    "/assets/draftStorage-UhwhHErf.js"
+  ],
+  "src/components/ImageUnderstandPanel.tsx": [
+    "/assets/draftStorage-UhwhHErf.js"
+  ],
+  "src/components/MediaPreviewModal.tsx": [
+    "/assets/draftStorage-UhwhHErf.js"
+  ],
+  "src/components/ProgressBar.tsx": [
+    "/assets/TasksDrawer-C6Ab6fBj.js"
+  ],
+  "src/components/PromptCompleteness.tsx": [
+    "/assets/draftStorage-UhwhHErf.js"
+  ],
+  "src/components/PromptForm.tsx": [
+    "/assets/ImageGenerate-C9KFVwbs.js"
+  ],
+  "src/components/PromptOptimizeButton.tsx": [
+    "/assets/draftStorage-UhwhHErf.js"
+  ],
+  "src/components/ResultGallery.tsx": [
+    "/assets/TasksDrawer-C6Ab6fBj.js"
+  ],
   "src/components/SiteFooter.tsx": [],
-  "src/components/SubmitFeedback.tsx": [],
-  "src/components/TaskCard.tsx": [],
-  "src/components/TaskHistory.tsx": [],
-  "src/components/TasksDrawer.tsx": [],
-  "src/components/Uploader.tsx": [],
-  "src/components/VideoResult.tsx": [],
+  "src/components/SubmitFeedback.tsx": [
+    "/assets/draftStorage-UhwhHErf.js"
+  ],
+  "src/components/TaskCard.tsx": [
+    "/assets/TasksDrawer-C6Ab6fBj.js"
+  ],
+  "src/components/TaskHistory.tsx": [
+    "/assets/draftStorage-UhwhHErf.js"
+  ],
+  "src/components/TasksDrawer.tsx": [
+    "/assets/TasksDrawer-C6Ab6fBj.js"
+  ],
+  "src/components/Uploader.tsx": [
+    "/assets/draftStorage-UhwhHErf.js"
+  ],
+  "src/components/VideoResult.tsx": [
+    "/assets/TasksDrawer-C6Ab6fBj.js"
+  ],
   "src/components/ui/Badge.tsx": [],
   "src/components/ui/Button.tsx": [],
   "src/components/ui/Card.tsx": [],
@@ -73,35 +120,64 @@
   "src/i18n.ts": [],
   "src/index.css": [],
   "src/main.tsx": [],
-  "src/pages/AboutPage.tsx": [],
-  "src/pages/ContactPage.tsx": [],
-  "src/pages/DesignSystemPage.css": [],
-  "src/pages/DesignSystemPage.tsx": [],
-  "src/pages/GuideArticlePage.tsx": [],
-  "src/pages/GuidesPage.tsx": [],
+  "src/pages/AboutPage.tsx": [
+    "/assets/AboutPage-BrDJ_M4a.js"
+  ],
+  "src/pages/ContactPage.tsx": [
+    "/assets/ContactPage-Ci9tY149.js"
+  ],
+  "src/pages/GuideArticlePage.tsx": [
+    "/assets/GuideArticlePage-BZWTx4Py.js"
+  ],
+  "src/pages/GuidesPage.tsx": [
+    "/assets/GuidesPage-DoXy2D5o.js"
+  ],
   "src/pages/HomePage.css": [],
   "src/pages/HomePage.tsx": [],
-  "src/pages/ImageGenerate.tsx": [],
-  "src/pages/NotFoundPage.tsx": [],
-  "src/pages/PrivacyPage.tsx": [],
-  "src/pages/SeoLandingPage.tsx": [],
-  "src/pages/TermsPage.tsx": [],
-  "src/pages/VideoGenerate.tsx": [],
+  "src/pages/ImageGenerate.tsx": [
+    "/assets/ImageGenerate-C9KFVwbs.js"
+  ],
+  "src/pages/NotFoundPage.tsx": [
+    "/assets/NotFoundPage-BNhsgnS7.js"
+  ],
+  "src/pages/PrivacyPage.tsx": [
+    "/assets/PrivacyPage-EY3L1zu_.js"
+  ],
+  "src/pages/SeoLandingPage.tsx": [
+    "/assets/SeoLandingPage-BC5VChCK.js"
+  ],
+  "src/pages/TermsPage.tsx": [
+    "/assets/TermsPage-Dn48jc6c.js"
+  ],
+  "src/pages/VideoGenerate.tsx": [
+    "/assets/VideoGenerate-BSq8KqV4.js"
+  ],
   "src/preferences.tsx": [],
   "src/preferencesContext.ts": [],
   "src/routes.tsx": [],
-  "src/seoLandingPages.ts": [],
+  "src/seoLandingPages.ts": [
+    "/assets/SeoLandingPage-BC5VChCK.js"
+  ],
+  "src/seoLandingRoutes.ts": [],
   "src/taskQueue.tsx": [],
   "src/taskQueueContext.ts": [],
   "src/theme.ts": [],
   "src/usePreferences.ts": [],
   "src/useTaskQueue.ts": [],
   "src/utils/cookieConsent.ts": [],
-  "src/utils/draftStorage.ts": [],
-  "src/utils/duration.ts": [],
-  "src/utils/generationSizes.ts": [],
+  "src/utils/draftStorage.ts": [
+    "/assets/draftStorage-UhwhHErf.js"
+  ],
+  "src/utils/duration.ts": [
+    "/assets/BlobDownloadButton-AM4pgon8.js"
+  ],
+  "src/utils/generationSizes.ts": [
+    "/assets/draftStorage-UhwhHErf.js"
+  ],
   "src/utils/localHistory.ts": [],
   "src/utils/notify.ts": [],
   "src/utils/session.ts": [],
-  "src/utils/sizePreference.ts": []
+  "src/utils/sizePreference.ts": [
+    "/assets/draftStorage-UhwhHErf.js"
+  ]
 }

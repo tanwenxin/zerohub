@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { usePreferences } from '../usePreferences';
 import { openCookieSettings } from '../utils/cookieConsent';
-import { SEO_LANDING_PAGES } from '../seoLandingPages';
+import { SEO_LANDING_ROUTES } from '../seoLandingRoutes';
 
 interface SiteFooterProps {
   wide?: boolean;
@@ -9,7 +9,7 @@ interface SiteFooterProps {
 
 export function SiteFooter({ wide = false }: SiteFooterProps) {
   const { language, t } = usePreferences();
-  const featuredSeoPages = SEO_LANDING_PAGES.slice(0, 6);
+  const featuredSeoPages = SEO_LANDING_ROUTES.slice(0, 6);
 
   return (
     <footer className={`site-footer ${wide ? 'wide' : ''}`}>
@@ -28,7 +28,7 @@ export function SiteFooter({ wide = false }: SiteFooterProps) {
       <nav className="site-footer-seo" aria-label={language === 'zh' ? '生成工具入口' : 'Generation tool pages'}>
         {featuredSeoPages.map((page) => (
           <Link key={page.path} to={page.path}>
-            {page.content[language].eyebrow}
+            {page.label[language]}
           </Link>
         ))}
       </nav>

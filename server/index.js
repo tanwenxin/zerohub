@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const cors = require('cors');
+const compression = require('compression');
 
 const config = require('./config');
 const imagesRouter = require('./routes/images');
@@ -15,6 +16,15 @@ const app = express();
 const publicDir = path.resolve(__dirname, '..', 'public');
 const publicIndex = path.join(publicDir, 'index.html');
 const publicNotFound = path.join(publicDir, '404.html');
+
+function prerenderedPageFor(requestPath) {
+  const normalized = requestPath.replace(/\/+$/, '') || '/';
+  if (normalized === '/') return publicIndex;
+  const relativePath = normalized.replace(/^\/+/, '');
+  const candidate = path.resolve(publicDir, `${relativePath}.html`);
+  if (!candidate.startsWith(`${publicDir}${path.sep}`)) return null;
+  return candidate;
+}
 
 function redactSensitive(value) {
   if (Array.isArray(value)) return value.map(redactSensitive);
@@ -42,6 +52,7 @@ function summarizeBody(body) {
 }
 
 app.use(cors());
+app.use(compression({ threshold: 1024 }));
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
@@ -88,11 +99,25 @@ app.use('/api', imagesRouter);
 app.use('/api', videosRouter);
 app.use('/api', textRouter);
 
+function setStaticCacheHeaders(res, filePath) {
+  if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return;
+  }
+  if (filePath.endsWith('.html')) {
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    return;
+  }
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+}
+
 // 生产同域部署：Serv00 会优先处理 public/ 静态文件；这里保留本地/代理部署兜底。
 // vite-react-ssg 产出扁平化预渲染页（如 image.html），通过 extensions 让 /image 命中 image.html。
-app.use(express.static(publicDir, { extensions: ['html'] }));
+app.use(express.static(publicDir, { extensions: ['html'], redirect: false, setHeaders: setStaticCacheHeaders }));
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api')) return next();
+  const prerenderedPage = prerenderedPageFor(req.path);
+  if (prerenderedPage && fs.existsSync(prerenderedPage)) return res.sendFile(prerenderedPage);
   // 未命中任何预渲染页面：优先返回预渲染 404 页，缺省回退首页。
   if (fs.existsSync(publicNotFound)) return res.status(404).sendFile(publicNotFound);
   if (fs.existsSync(publicIndex)) return res.sendFile(publicIndex);
