@@ -28,7 +28,6 @@ export function HomePage() {
             </div>
 
             <section className="free-promise" aria-label={t('home.free.badge')}>
-              <Badge tone="ok">{t('home.free.badge')}</Badge>
               <div>
                 <h2>{t('home.free.title')}</h2>
                 <p>{t('home.free.body')}</p>

@@ -151,7 +151,7 @@ export default function App() {
       ? t('health.ready')
       : t('health.noApiKey')
     : t('health.backendOffline');
-  const showFreeBadge = route === 'image' || route === 'video';
+  const showFreeBadge = route === 'home' || route === 'image' || route === 'video';
 
   return (
     <div className="app app-shell">
