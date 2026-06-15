@@ -27,6 +27,19 @@ export function HomePage() {
               </ButtonLink>
             </div>
 
+            <section className="free-promise" aria-label={t('home.free.badge')}>
+              <Badge tone="ok">{t('home.free.badge')}</Badge>
+              <div>
+                <h2>{t('home.free.title')}</h2>
+                <p>{t('home.free.body')}</p>
+              </div>
+              <div className="free-promise-points">
+                <span>{t('home.free.point1')}</span>
+                <span>{t('home.free.point2')}</span>
+                <span>{t('home.free.point3')}</span>
+              </div>
+            </section>
+
             <div className="mission-feed" aria-label={t('home.feed.label')}>
               <div className="feed-row">
                 <code>STEP 01</code>

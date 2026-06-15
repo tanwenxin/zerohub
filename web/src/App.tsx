@@ -151,6 +151,7 @@ export default function App() {
       ? t('health.ready')
       : t('health.noApiKey')
     : t('health.backendOffline');
+  const showFreeBadge = route === 'image' || route === 'video';
 
   return (
     <div className="app app-shell">
@@ -178,6 +179,7 @@ export default function App() {
               <span className="brand-name">Agnes</span>
               <span className="brand-tagline">Frame Studio</span>
             </span>
+            {showFreeBadge ? <span className="brand-free-badge">{t('free.notice.title')}</span> : null}
           </Link>
 
           <nav className="nav" aria-label="Primary">

@@ -33,6 +33,47 @@
   flex-wrap: wrap;
   margin-top: var(--space-8);
 }
+.free-promise {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-5);
+  border: 1px solid color-mix(in oklab, var(--success) 30%, var(--border-soft));
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in oklab, var(--success) 16%, transparent), transparent 34%),
+    color-mix(in oklab, var(--surface) 48%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, var(--fg) 6%, transparent);
+}
+.free-promise h2 {
+  margin: 0 0 var(--space-2);
+  color: var(--fg);
+  font: 800 clamp(22px, 3vw, 32px) / 1.08 var(--font-display);
+  letter-spacing: var(--tracking-display);
+  text-wrap: balance;
+}
+.free-promise p {
+  margin: 0;
+  max-width: 680px;
+  color: var(--fg-2);
+  font-size: var(--text-sm);
+  line-height: 1.65;
+}
+.free-promise-points {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+.free-promise-points span {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+  padding: 8px 10px;
+  color: var(--fg);
+  background: color-mix(in oklab, var(--bg) 32%, transparent);
+  font: 760 var(--text-xs) / 1 var(--font-mono);
+  text-align: center;
+  text-transform: uppercase;
+}
 
 .brand-ribbon {
   display: inline-flex;
@@ -391,6 +432,9 @@
 }
 @media (max-width: 620px) {
   .telemetry {
+    grid-template-columns: 1fr;
+  }
+  .free-promise-points {
     grid-template-columns: 1fr;
   }
   .feed-row {

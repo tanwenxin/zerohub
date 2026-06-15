@@ -47,6 +47,96 @@ const STATUS_KEY: Record<Task['status'], TranslationKey> = {
 const ACTIVE_STATUSES: Task['status'][] = ['pending', 'queued', 'running'];
 type HistoryCategory = 'image' | 'video';
 const PROMPT_COLLAPSE_THRESHOLD = 120;
+const HISTORY_MEDIA_ROOT_MARGIN = '80px';
+
+function useLazyMedia<T extends HTMLElement>() {
+  const ref = useRef<T | null>(null);
+  const [shouldLoad, setShouldLoad] = useState(false);
+
+  useEffect(() => {
+    if (shouldLoad) return;
+    const node = ref.current;
+    if (!node) return;
+    if (typeof IntersectionObserver === 'undefined') {
+      const id = window.setTimeout(() => setShouldLoad(true), 0);
+      return () => window.clearTimeout(id);
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        setShouldLoad(true);
+        observer.disconnect();
+      },
+      { rootMargin: HISTORY_MEDIA_ROOT_MARGIN }
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [shouldLoad]);
+
+  return { ref, shouldLoad };
+}
+
+function LazyHistoryImage({ src, alt }: { src: string; alt: string }) {
+  const { ref, shouldLoad } = useLazyMedia<HTMLSpanElement>();
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <span
+      ref={ref}
+      className={[
+        'lazy-history-media',
+        'lazy-history-image',
+        shouldLoad ? 'is-requested' : '',
+        loaded ? 'is-loaded' : '',
+      ].filter(Boolean).join(' ')}
+    >
+      {shouldLoad ? (
+        <img
+          className={`lazy-history-media-content ${loaded ? 'is-loaded' : ''}`}
+          src={src}
+          alt={alt}
+          loading="lazy"
+          decoding="async"
+          onLoad={() => setLoaded(true)}
+          onError={() => setLoaded(true)}
+        />
+      ) : null}
+    </span>
+  );
+}
+
+function LazyHistoryVideo({ src, label }: { src: string; label: string }) {
+  const { ref, shouldLoad } = useLazyMedia<HTMLDivElement>();
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <div
+      ref={ref}
+      className={[
+        'lazy-history-media',
+        'lazy-history-video',
+        shouldLoad ? 'is-requested' : '',
+        loaded ? 'is-loaded' : '',
+      ].filter(Boolean).join(' ')}
+    >
+      {shouldLoad ? (
+        <video
+          className={`video-player lazy-history-media-content ${loaded ? 'is-loaded' : ''}`}
+          src={src}
+          controls
+          playsInline
+          preload="metadata"
+          onLoadedMetadata={() => setLoaded(true)}
+          onError={() => setLoaded(true)}
+        >
+          {label}
+        </video>
+      ) : null}
+    </div>
+  );
+}
 
 function historyStorageKey(category: HistoryCategory, name: string): string {
   return `agnes:${category}-history-${name}`;
@@ -441,13 +531,7 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
                 <div className="history-result">
                   {category === 'video' && videoUrl ? (
                     <>
-                      <video
-                        className="video-player"
-                        src={videoUrl}
-                        controls
-                        playsInline
-                        preload="metadata"
-                      />
+                      <LazyHistoryVideo key={videoUrl} src={videoUrl} label={t('gallery.video.unsupported')} />
                       <div className="gallery-actions">
                         <button
                           className="btn-secondary"
@@ -494,7 +578,7 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
                               }
                               aria-label={t('preview.open')}
                             >
-                              <img src={src} alt={`result-${i}`} loading="lazy" />
+                              <LazyHistoryImage key={src} src={src} alt={`result-${i}`} />
                             </button>
                             <div className="gallery-actions">
                               <BlobDownloadButton
