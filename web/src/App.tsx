@@ -6,6 +6,7 @@ import { initializeBackgroundNotifications } from './utils/notify';
 import { usePreferences } from './usePreferences';
 import { useTaskQueue } from './useTaskQueue';
 import { SiteFooter } from './components/SiteFooter';
+import { BackToTopButton } from './components/BackToTopButton';
 import type { TranslationKey } from './i18n';
 import { getSeoLandingRouteByPath } from './seoLandingRoutes';
 import { prefetchRoute } from './routePrefetch';
@@ -237,6 +238,7 @@ export default function App() {
       </main>
 
       <SiteFooter wide={route === 'image' || route === 'video'} />
+      <BackToTopButton />
 
       <Suspense fallback={null}>
         {drawerOpen ? <TasksDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} /> : null}

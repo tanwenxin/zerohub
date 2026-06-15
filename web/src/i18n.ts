@@ -35,6 +35,7 @@ const zh = {
   'health.noApiKey': '未配置 API Key',
   'health.backendOffline': '后端未连接',
   'health.ready': '服务就绪',
+  'backToTop.label': '回到顶部',
   'page.text2img.title': '文生图',
   'page.text2img.desc': '用一句清晰的画面描述，生成可预览、可下载、可继续复用的视觉草图。',
   'page.text2img.placeholder':
@@ -451,6 +452,7 @@ const en: Record<keyof typeof zh, string> = {
   'health.noApiKey': 'API key missing',
   'health.backendOffline': 'Backend offline',
   'health.ready': 'Service ready',
+  'backToTop.label': 'Back to top',
   'page.text2img.title': 'Text to Image',
   'page.text2img.desc':
     'Turn a clear scene description into visual drafts you can preview, download, and reuse.',
