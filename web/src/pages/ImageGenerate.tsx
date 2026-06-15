@@ -274,14 +274,16 @@ export function ImageGenerate() {
           }}
         />
 
-        <button
-          className={`btn-primary btn-block generate-submit-btn ${accepted ? 'accepted' : ''} ${submitLocked ? 'locked' : ''}`}
-          disabled={!canSubmit || !queueHasRoom || submitLocked}
-          onClick={onSubmit}
-        >
-          {buttonLabel}
-        </button>
-        <SubmitFeedback visible={accepted} message={t('tasks.acceptedHint')} />
+        <div className="generate-actions">
+          <button
+            className={`btn-primary btn-block generate-submit-btn ${accepted ? 'accepted' : ''} ${submitLocked ? 'locked' : ''}`}
+            disabled={!canSubmit || !queueHasRoom || submitLocked}
+            onClick={onSubmit}
+          >
+            {buttonLabel}
+          </button>
+          <SubmitFeedback visible={accepted} message={t('tasks.acceptedHint')} />
+        </div>
 
         <section className="landing-faq">
           <h3>{t('imageLanding.faqTitle')}</h3>

@@ -437,7 +437,7 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
       {(searchText.trim() || statusFilter !== 'all') && visibleTasks.length === 0 ? (
         <div className="empty history-empty-filter">{t('history.noMatches')}</div>
       ) : (
-      <MasonryGrid className="task-history-list" gap={12} minColumnWidth={220} maxColumns={2}>
+      <MasonryGrid className="task-history-list" gap={12} minColumnWidth={180} maxColumns={2}>
         {visibleTasks.map((task) => {
           const isActive = ACTIVE_STATUSES.includes(task.status);
           const isError = task.status === 'error';

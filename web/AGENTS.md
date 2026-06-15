@@ -55,7 +55,7 @@ web/src/
    - 语义令牌：`--bg` `--surface` `--surface-warm` `--fg` `--fg-2` `--muted` `--accent` `--meta` `--success` `--warn` `--danger` `--border` `--border-soft`。
    - 字体：`--font-display` `--font-body` `--font-mono`；字号 `--text-xs ... --text-4xl`。
    - 间距：`--space-1 ... --space-12`、`--section-y-*`。
-   - 圆角：`--radius-sm|md|lg|pill`；阴影 `--elev-*`；动效 `--motion-*` `--ease-standard`；布局 `--container-*`。
+   - 圆角：`--radius-sm|md|lg|pill`；阴影 `--elev-*`；动效 `--motion-*` `--ease-standard`；布局 `--container-*`、`--topbar-h`（顶栏高度，供 sticky 顶部偏移复用，如生成页右侧历史区固定定位）。
    - **兼容别名**：旧变量名（`--panel` `--panel-2` `--text` `--primary` `--ok` `--error` 等）被映射到新令牌，使存量组件无需逐个改写即可继承暗色视觉。新代码请优先使用语义令牌，不要新增旧别名。
 
 2. **通用组件库** —— `components/ui/`。样式类名统一以 `ui-` 前缀，全部引用设计令牌，无硬编码颜色/尺寸，无业务逻辑。

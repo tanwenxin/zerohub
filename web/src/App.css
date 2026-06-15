@@ -73,6 +73,7 @@
   --container-gutter-desktop: 36px;
   --container-gutter-tablet: 24px;
   --container-gutter-phone: 16px;
+  --topbar-h: 72px;
 
   /* —— 兼容别名：映射旧变量名到新令牌，避免逐个改写存量组件 —— */
   --bg: #0b1020;
@@ -1090,6 +1091,10 @@ select:focus {
   margin-top: 6px;
 }
 
+.generate-actions {
+  margin-top: var(--space-5);
+}
+
 .generate-submit-btn {
   position: relative;
   overflow: hidden;
@@ -1621,7 +1626,7 @@ select:focus {
 }
 .lazy-history-media {
   width: 100%;
-  min-height: 160px;
+  min-height: 120px;
   display: grid;
   place-items: center;
   background:
@@ -1938,6 +1943,26 @@ select:focus {
 
 .output {
   min-height: 300px;
+}
+
+@media (min-width: 1280px) {
+  .panel.output {
+    position: sticky;
+    top: calc(var(--topbar-h, 72px) + var(--space-4));
+    max-height: calc(100vh - var(--topbar-h, 72px) - var(--space-6));
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .panel.output .history-title {
+    flex: 0 0 auto;
+  }
+  .panel.output .history {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: var(--space-2);
+  }
 }
 
 /* 自定义尺寸 */
@@ -2258,6 +2283,21 @@ input[type='number']:focus {
 @media (max-width: 1279px) {
   .page {
     grid-template-columns: 1fr;
+    padding-bottom: 84px;
+  }
+  .generate-actions {
+    position: fixed;
+    left: var(--container-gutter-phone);
+    right: var(--container-gutter-phone);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-3));
+    z-index: 60;
+    margin: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    background: color-mix(in oklab, var(--surface) 90%, transparent);
+    backdrop-filter: blur(14px);
+    box-shadow: var(--elev-raised);
   }
 }
 
