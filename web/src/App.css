@@ -2304,21 +2304,6 @@ input[type='number']:focus {
 @media (max-width: 1279px) {
   .page {
     grid-template-columns: 1fr;
-    padding-bottom: 84px;
-  }
-  .generate-actions {
-    position: fixed;
-    left: var(--container-gutter-phone);
-    right: var(--container-gutter-phone);
-    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-3));
-    z-index: 60;
-    margin: 0;
-    padding: var(--space-3);
-    border: 1px solid var(--border-soft);
-    border-radius: var(--radius-lg);
-    background: color-mix(in oklab, var(--surface) 90%, transparent);
-    backdrop-filter: blur(14px);
-    box-shadow: var(--elev-raised);
   }
 }
 

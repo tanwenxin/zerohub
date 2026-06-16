@@ -105,10 +105,10 @@ const config = {
   // 任务持久化（JSON 文件）
   persistence: {
     file: process.env.TASKS_DB_FILE || path.resolve(__dirname, 'data', 'tasks.json'),
-    // 任务保留时长（毫秒），超过则在 GC 时清除
-    ttlMs: int('TASKS_TTL_MS', 24 * 60 * 60 * 1000),
+    // 任务保留时长（毫秒），超过则在 GC 时清除；公开统计看板默认统计最近 30 天
+    ttlMs: int('TASKS_TTL_MS', 30 * 24 * 60 * 60 * 1000),
     // 最多保留的任务条数
-    maxItems: int('TASKS_MAX_ITEMS', 500),
+    maxItems: int('TASKS_MAX_ITEMS', 5000),
     // 写盘节流间隔（毫秒），合并高频更新，降低 IO
     flushIntervalMs: int('TASKS_FLUSH_INTERVAL_MS', 800),
   },

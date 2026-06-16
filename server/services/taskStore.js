@@ -8,6 +8,85 @@ const config = require('../config');
 const logger = require('./logger');
 const { normalizePublicUrl } = require('../utils/url');
 
+const PUBLIC_STATUSES = ['pending', 'queued', 'running', 'done', 'error'];
+const PUBLIC_CATEGORIES = ['image', 'video'];
+const PUBLIC_TYPES = ['text2img', 'img2img', 'multi', 'text2vid', 'img2vid', 'multivid', 'keyframes'];
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function clampInt(value, fallback, min, max) {
+  const n = Number.parseInt(value, 10);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+function dayKey(timestamp) {
+  return new Date(timestamp).toISOString().slice(0, 10);
+}
+
+function emptyBucket(key) {
+  const byStatus = {};
+  for (const status of PUBLIC_STATUSES) byStatus[status] = 0;
+  return {
+    key,
+    total: 0,
+    done: 0,
+    error: 0,
+    active: 0,
+    successRate: 0,
+    avgDurationMs: null,
+    p50DurationMs: null,
+    p95DurationMs: null,
+    byStatus,
+    _durations: [],
+  };
+}
+
+function addToBucket(bucket, task) {
+  const status = PUBLIC_STATUSES.includes(task.status) ? task.status : 'error';
+  bucket.total += 1;
+  bucket.byStatus[status] = (bucket.byStatus[status] || 0) + 1;
+  if (status === 'done') bucket.done += 1;
+  else if (status === 'error') bucket.error += 1;
+  else bucket.active += 1;
+  if (Number.isFinite(task.durationMs) && task.durationMs >= 0) {
+    bucket._durations.push(task.durationMs);
+  }
+}
+
+function percentile(sorted, ratio) {
+  if (!sorted.length) return null;
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * ratio) - 1));
+  return sorted[index];
+}
+
+function finalizeBucket(bucket) {
+  const durations = bucket._durations.slice().sort((a, b) => a - b);
+  const durationTotal = durations.reduce((sum, value) => sum + value, 0);
+  const out = { ...bucket };
+  delete out._durations;
+  out.successRate = out.total > 0 ? out.done / out.total : 0;
+  out.avgDurationMs = durations.length ? Math.round(durationTotal / durations.length) : null;
+  out.p50DurationMs = percentile(durations, 0.5);
+  out.p95DurationMs = percentile(durations, 0.95);
+  return out;
+}
+
+function incrementCounter(map, key, patch = {}) {
+  const normalizedKey = key == null || key === '' ? 'unknown' : String(key);
+  const current = map.get(normalizedKey) || { key: normalizedKey, count: 0, ...patch };
+  current.count += 1;
+  for (const [patchKey, value] of Object.entries(patch)) {
+    if (current[patchKey] == null) current[patchKey] = value;
+  }
+  map.set(normalizedKey, current);
+}
+
+function topCounters(map, limit = 8) {
+  return Array.from(map.values())
+    .sort((a, b) => b.count - a.count || String(a.key).localeCompare(String(b.key)))
+    .slice(0, limit);
+}
+
 /**
  * 任务存储（JSON 文件持久化）。
  *
@@ -198,6 +277,108 @@ class TaskStore {
     if (category) arr = arr.filter((t) => t.category === category);
     arr.sort((a, b) => b.updatedAt - a.updatedAt);
     return arr.slice(0, limit);
+  }
+
+  /** 构建公开统计：只返回脱敏聚合字段，禁止暴露 prompt、URL、ownerId 或原始任务对象 */
+  publicStats({ days = 30, recentLimit = 30 } = {}) {
+    const rangeDays = clampInt(days, 30, 1, 30);
+    const recentTaskLimit = clampInt(recentLimit, 30, 1, 100);
+    const now = Date.now();
+    const since = now - rangeDays * DAY_MS;
+
+    const summary = emptyBucket('summary');
+    const byCategory = new Map(PUBLIC_CATEGORIES.map((category) => [category, emptyBucket(category)]));
+    const byType = new Map(PUBLIC_TYPES.map((type) => [type, emptyBucket(type)]));
+    const byStatus = {};
+    for (const status of PUBLIC_STATUSES) byStatus[status] = 0;
+
+    const daily = new Map();
+    for (let i = rangeDays - 1; i >= 0; i -= 1) {
+      const date = dayKey(now - i * DAY_MS);
+      daily.set(date, {
+        date,
+        total: 0,
+        done: 0,
+        error: 0,
+        active: 0,
+        image: 0,
+        video: 0,
+      });
+    }
+
+    const errors = new Map();
+    const phases = new Map();
+    const recentTasks = [];
+
+    const tasks = Array.from(this._tasks.values())
+      .filter((task) => task && task.createdAt >= since)
+      .sort((a, b) => b.createdAt - a.createdAt);
+
+    for (const task of tasks) {
+      const status = PUBLIC_STATUSES.includes(task.status) ? task.status : 'error';
+      const category = PUBLIC_CATEGORIES.includes(task.category) ? task.category : 'image';
+      const type = PUBLIC_TYPES.includes(task.type) ? task.type : 'unknown';
+
+      addToBucket(summary, { ...task, status });
+      addToBucket(byCategory.get(category), { ...task, status });
+      if (!byType.has(type)) byType.set(type, emptyBucket(type));
+      addToBucket(byType.get(type), { ...task, status });
+      byStatus[status] = (byStatus[status] || 0) + 1;
+
+      const date = dayKey(task.createdAt);
+      const dailyItem = daily.get(date);
+      if (dailyItem) {
+        dailyItem.total += 1;
+        dailyItem[category] = (dailyItem[category] || 0) + 1;
+        if (status === 'done') dailyItem.done += 1;
+        else if (status === 'error') dailyItem.error += 1;
+        else dailyItem.active += 1;
+      }
+
+      if (task.error) {
+        incrementCounter(errors, task.error.code || 'UNKNOWN', {
+          status: task.error.status || null,
+        });
+      }
+
+      const events = task.debugInfo && Array.isArray(task.debugInfo.events) ? task.debugInfo.events : [];
+      for (const event of events) {
+        if (event && event.phase) incrementCounter(phases, event.phase);
+      }
+      const lastEvent = events.length ? events[events.length - 1] : null;
+
+      if (recentTasks.length < recentTaskLimit) {
+        recentTasks.push({
+          createdAt: task.createdAt,
+          updatedAt: task.updatedAt,
+          category,
+          type,
+          status,
+          progress: Number.isFinite(task.progress) ? task.progress : 0,
+          durationMs: Number.isFinite(task.durationMs) ? task.durationMs : null,
+          errorCode: task.error && task.error.code ? task.error.code : null,
+          errorStatus: task.error && task.error.status ? task.error.status : null,
+          eventCount: events.length,
+          lastPhase: lastEvent && lastEvent.phase ? lastEvent.phase : null,
+        });
+      }
+    }
+
+    return {
+      rangeDays,
+      generatedAt: now,
+      since,
+      retentionDays: Math.round(this._ttlMs / DAY_MS),
+      retentionMaxItems: this._maxItems,
+      summary: finalizeBucket(summary),
+      byCategory: Array.from(byCategory.values()).map(finalizeBucket),
+      byType: Array.from(byType.values()).map(finalizeBucket).filter((item) => item.total > 0 || PUBLIC_TYPES.includes(item.key)),
+      byStatus,
+      daily: Array.from(daily.values()),
+      errors: topCounters(errors),
+      phases: topCounters(phases),
+      recentTasks,
+    };
   }
 
   update(id, patch) {

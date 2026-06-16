@@ -349,3 +349,76 @@ export async function getHealth(): Promise<Health> {
   const res = await fetch('/api/health');
   return res.json();
 }
+
+export type PublicTaskStatus = Task['status'];
+export type PublicTaskCategory = 'image' | 'video';
+
+export interface PublicStatsBucket {
+  key: string;
+  total: number;
+  done: number;
+  error: number;
+  active: number;
+  successRate: number;
+  avgDurationMs: number | null;
+  p50DurationMs: number | null;
+  p95DurationMs: number | null;
+  byStatus: Record<PublicTaskStatus, number>;
+}
+
+export interface PublicStatsDailyBucket {
+  date: string;
+  total: number;
+  done: number;
+  error: number;
+  active: number;
+  image: number;
+  video: number;
+}
+
+export interface PublicStatsCounter {
+  key: string;
+  count: number;
+  status?: number | null;
+}
+
+export interface PublicStatsRecentTask {
+  createdAt: number;
+  updatedAt: number;
+  category: PublicTaskCategory;
+  type: string;
+  status: PublicTaskStatus;
+  progress: number;
+  durationMs: number | null;
+  errorCode: string | null;
+  errorStatus: number | null;
+  eventCount: number;
+  lastPhase: string | null;
+}
+
+export interface PublicGenerationStats {
+  rangeDays: number;
+  generatedAt: number;
+  since: number;
+  retentionDays: number;
+  retentionMaxItems: number;
+  summary: PublicStatsBucket;
+  byCategory: PublicStatsBucket[];
+  byType: PublicStatsBucket[];
+  byStatus: Record<PublicTaskStatus, number>;
+  daily: PublicStatsDailyBucket[];
+  errors: PublicStatsCounter[];
+  phases: PublicStatsCounter[];
+  recentTasks: PublicStatsRecentTask[];
+}
+
+export async function getPublicGenerationStats(days = 30): Promise<PublicGenerationStats> {
+  const qs = new URLSearchParams();
+  qs.set('days', String(days));
+  const res = await fetch(`/api/public-stats?${qs.toString()}`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ error: 'Stats query failed' }));
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}

@@ -10,6 +10,7 @@ const config = require('./config');
 const imagesRouter = require('./routes/images');
 const videosRouter = require('./routes/videos');
 const textRouter = require('./routes/text');
+const statsRouter = require('./routes/stats');
 const logger = require('./services/logger');
 
 const app = express();
@@ -98,6 +99,7 @@ app.use((req, res, next) => {
 app.use('/api', imagesRouter);
 app.use('/api', videosRouter);
 app.use('/api', textRouter);
+app.use('/api', statsRouter);
 
 function setStaticCacheHeaders(res, filePath) {
   if (filePath.includes(`${path.sep}assets${path.sep}`)) {
