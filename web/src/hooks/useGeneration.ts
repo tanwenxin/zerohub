@@ -15,6 +15,11 @@ import { upsertLocalHistory } from '../utils/localHistory';
 
 const POLL_INTERVAL_MS = 1200;
 
+interface SubmitOptions {
+  onTaskAccepted?: () => void;
+  onTaskRejected?: (failure: { localId: string; type: TaskType; message: string }) => void;
+}
+
 interface PollingSession {
   id: number;
   timerId: number | null;
@@ -139,7 +144,7 @@ export function useMultiGeneration(language: Language = 'zh') {
   );
 
   const submit = useCallback(
-    async (params: GenerateParams) => {
+    async (params: GenerateParams, options: SubmitOptions = {}) => {
       const localId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const local: LocalTask = {
         localId,
@@ -151,20 +156,25 @@ export function useMultiGeneration(language: Language = 'zh') {
         submitError: null,
         retrying: false,
       };
-      setTasks((prev) => [local, ...prev]);
 
       try {
         const { taskId } = await generate(params);
+        setTasks((prev) => [local, ...prev]);
+        options.onTaskAccepted?.();
         startPolling(local, taskId);
       } catch (e) {
-        updateTask(localId, { submitError: formatSubmitError(e) });
+        options.onTaskRejected?.({
+          localId,
+          type: params.type,
+          message: formatSubmitError(e),
+        });
       }
     },
-    [startPolling, updateTask, formatSubmitError]
+    [startPolling, formatSubmitError]
   );
 
   const submitVideo = useCallback(
-    async (params: VideoGenerateParams) => {
+    async (params: VideoGenerateParams, options: SubmitOptions = {}) => {
       const localId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const size = `${params.width ?? 1152}x${params.height ?? 768}`;
       const local: LocalTask = {
@@ -177,16 +187,21 @@ export function useMultiGeneration(language: Language = 'zh') {
         submitError: null,
         retrying: false,
       };
-      setTasks((prev) => [local, ...prev]);
 
       try {
         const { taskId } = await generateVideo(params);
+        setTasks((prev) => [local, ...prev]);
+        options.onTaskAccepted?.();
         startPolling(local, taskId);
       } catch (e) {
-        updateTask(localId, { submitError: formatSubmitError(e) });
+        options.onTaskRejected?.({
+          localId,
+          type: params.type,
+          message: formatSubmitError(e),
+        });
       }
     },
-    [startPolling, updateTask, formatSubmitError]
+    [startPolling, formatSubmitError]
   );
 
   // 重试查询：复用已存在的服务端 taskId 重新轮询，不创建新任务

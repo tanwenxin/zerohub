@@ -1153,6 +1153,11 @@ select:focus {
   animation: submitSlideIn 0.22s ease;
 }
 
+.submit-feedback.error.show {
+  border-color: color-mix(in srgb, var(--danger) 48%, var(--border));
+  background: color-mix(in srgb, var(--danger) 13%, transparent);
+}
+
 .submit-feedback-dot {
   width: 9px;
   height: 9px;
@@ -1160,6 +1165,11 @@ select:focus {
   background: var(--ok);
   box-shadow: 0 0 0 5px color-mix(in srgb, var(--ok) 16%, transparent);
   flex-shrink: 0;
+}
+
+.submit-feedback.error .submit-feedback-dot {
+  background: var(--danger);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--danger) 16%, transparent);
 }
 
 @keyframes submitPulse {

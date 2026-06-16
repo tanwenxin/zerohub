@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useMultiGeneration, type LocalTask } from './hooks/useGeneration';
 import { usePreferences } from './usePreferences';
 import type { GenerateParams, VideoGenerateParams } from './api/client';
-import { TaskQueueContext, type TaskQueueContextValue } from './taskQueueContext';
+import { TaskQueueContext, type SubmitOptions, type TaskQueueContextValue } from './taskQueueContext';
 
 // 三种类型加起来最多同时进行的任务数
 export const MAX_ACTIVE_TASKS = 3;
@@ -26,25 +26,31 @@ export function TaskQueueProvider({ children }: { children: ReactNode }) {
   const lastSubmitAtRef = useRef(0);
   const unlockTimerRef = useRef<number | null>(null);
   const [lastAcceptedAt, setLastAcceptedAt] = useState<number | null>(null);
+  const [lastSubmitFailure, setLastSubmitFailure] =
+    useState<TaskQueueContextValue['lastSubmitFailure']>(null);
+  const [pendingSubmitCount, setPendingSubmitCount] = useState(0);
   const [submitLocked, setSubmitLocked] = useState(false);
   const [submitLockRemainingMs, setSubmitLockRemainingMs] = useState(0);
+  const lastFailureKeyRef = useRef('');
 
   const activeCount = useMemo(() => tasks.filter(isActive).length, [tasks]);
-  const canSubmit = activeCount < MAX_ACTIVE_TASKS;
+  const occupiedCount = activeCount + pendingSubmitCount;
+  const canSubmit = occupiedCount < MAX_ACTIVE_TASKS;
 
-  // 公共的提交闸门：名额检查 + 节流；通过则执行 run() 并加锁
+  // 公共的提交闸门：名额检查 + 节流；通过则发起请求并加锁。
+  // 真正的“已加入队列”状态必须等后端返回 taskId 后再更新。
   const guardedSubmit = useCallback(
     (run: () => void): boolean => {
       const now = Date.now();
       const elapsed = now - lastSubmitAtRef.current;
-      if (activeCount >= MAX_ACTIVE_TASKS) return false; // 双保险：超过上限直接忽略
+      if (occupiedCount >= MAX_ACTIVE_TASKS) return false; // 双保险：超过上限直接忽略
       if (elapsed < SUBMIT_THROTTLE_MS) {
         setSubmitLockRemainingMs(SUBMIT_THROTTLE_MS - elapsed);
         return false;
       }
 
       lastSubmitAtRef.current = now;
-      setLastAcceptedAt(now);
+      setPendingSubmitCount((count) => count + 1);
       setSubmitLocked(true);
       setSubmitLockRemainingMs(SUBMIT_THROTTLE_MS);
       if (unlockTimerRef.current) window.clearTimeout(unlockTimerRef.current);
@@ -56,18 +62,56 @@ export function TaskQueueProvider({ children }: { children: ReactNode }) {
       run();
       return true;
     },
-    [activeCount]
+    [occupiedCount]
+  );
+
+  const submitOptions = useCallback(
+    (options?: SubmitOptions) => ({
+      ...options,
+      onTaskAccepted: () => {
+        setPendingSubmitCount((count) => Math.max(0, count - 1));
+        setLastAcceptedAt(Date.now());
+        options?.onTaskAccepted?.();
+      },
+      onTaskRejected: (failure: { localId: string; type: LocalTask['type']; message: string }) => {
+        setPendingSubmitCount((count) => Math.max(0, count - 1));
+        setLastSubmitFailure({ ...failure, at: Date.now() });
+      },
+    }),
+    []
   );
 
   const submit = useCallback(
-    (params: GenerateParams) => guardedSubmit(() => rawSubmit(params)),
-    [guardedSubmit, rawSubmit]
+    (params: GenerateParams, options?: SubmitOptions) =>
+      guardedSubmit(() => rawSubmit(params, submitOptions(options))),
+    [guardedSubmit, rawSubmit, submitOptions]
   );
 
   const submitVideo = useCallback(
-    (params: VideoGenerateParams) => guardedSubmit(() => rawSubmitVideo(params)),
-    [guardedSubmit, rawSubmitVideo]
+    (params: VideoGenerateParams, options?: SubmitOptions) =>
+      guardedSubmit(() => rawSubmitVideo(params, submitOptions(options))),
+    [guardedSubmit, rawSubmitVideo, submitOptions]
   );
+
+  const clearSubmitFailure = useCallback(() => {
+    setLastSubmitFailure(null);
+  }, []);
+
+  useEffect(() => {
+    const failed = tasks.find((item) => item.submitError);
+    if (!failed || !failed.submitError) return;
+
+    const key = `${failed.localId}:${failed.submitError}`;
+    if (lastFailureKeyRef.current === key) return;
+
+    lastFailureKeyRef.current = key;
+    setLastSubmitFailure({
+      localId: failed.localId,
+      type: failed.type,
+      message: failed.submitError,
+      at: Date.now(),
+    });
+  }, [tasks]);
 
   useEffect(() => {
     return () => {
@@ -86,6 +130,8 @@ export function TaskQueueProvider({ children }: { children: ReactNode }) {
       maxActive: MAX_ACTIVE_TASKS,
       canSubmit,
       lastAcceptedAt,
+      lastSubmitFailure,
+      clearSubmitFailure,
       submitLocked,
       submitLockRemainingMs,
     }),
@@ -98,6 +144,8 @@ export function TaskQueueProvider({ children }: { children: ReactNode }) {
       activeCount,
       canSubmit,
       lastAcceptedAt,
+      lastSubmitFailure,
+      clearSubmitFailure,
       submitLocked,
       submitLockRemainingMs,
     ]

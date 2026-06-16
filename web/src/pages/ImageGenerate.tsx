@@ -53,13 +53,21 @@ export function ImageGenerate() {
   const [files, setFiles] = useState<File[]>(() => readImageDraftFiles());
   const [urls, setUrls] = useState<string[]>(() => readImageDraft()?.urls ?? []);
   const [submitFeedback, setSubmitFeedback] = useState<'idle' | 'accepted'>('idle');
+  const [hiddenSubmitFailureId, setHiddenSubmitFailureId] = useState<string | null>(null);
   const [historyKey, setHistoryKey] = useState(0); // 提交后触发历史刷新
   const [formKey, setFormKey] = useState(0); // 回填/清空时强制 PromptForm 重新初始化
   const [promptAssessKey, setPromptAssessKey] = useState(0);
   const feedbackTimerRef = useRef<number | null>(null);
   const promptDirtyRef = useRef(false);
 
-  const { submit, canSubmit: queueHasRoom, maxActive, submitLocked } = useTaskQueue();
+  const {
+    submit,
+    canSubmit: queueHasRoom,
+    maxActive,
+    submitLocked,
+    lastSubmitFailure,
+    clearSubmitFailure,
+  } = useTaskQueue();
 
   useEffect(() => {
     return () => {
@@ -81,7 +89,14 @@ export function ImageGenerate() {
   const imageCount = files.length + urls.length;
   const enoughImages = !needsImage || imageCount >= minImages;
   const canSubmit = Boolean(prompt.trim()) && enoughImages && sizeValid;
-  const accepted = submitFeedback === 'accepted';
+  const imageSubmitFailure =
+    lastSubmitFailure && IMAGE_MODES.includes(lastSubmitFailure.type as ImageTaskType)
+      ? lastSubmitFailure
+      : null;
+  const failed = Boolean(
+    imageSubmitFailure && hiddenSubmitFailureId !== imageSubmitFailure.localId
+  );
+  const accepted = submitFeedback === 'accepted' && !failed;
 
   const descKey: TranslationKey =
     mode === 'text2img' ? 'page.text2img.desc' : mode === 'img2img' ? 'page.img2img.desc' : 'page.multi.desc';
@@ -103,6 +118,16 @@ export function ImageGenerate() {
     setPromptAssessKey((k) => k + 1);
   }
 
+  useEffect(() => {
+    if (!imageSubmitFailure) return;
+
+    if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
+    feedbackTimerRef.current = window.setTimeout(() => {
+      setHiddenSubmitFailureId(imageSubmitFailure.localId);
+      clearSubmitFailure();
+    }, 6000);
+  }, [clearSubmitFailure, imageSubmitFailure]);
+
   const buttonLabel = needsImage && !enoughImages
     ? t('task.needImages', { count: minImages - imageCount })
     : !queueHasRoom
@@ -117,26 +142,33 @@ export function ImageGenerate() {
 
   function onSubmit() {
     if (!canSubmit || !queueHasRoom || submitLocked) return;
-    const wasAccepted = submit({
-      type: mode,
-      prompt,
-      size,
-      responseFormat,
-      files: needsImage ? files : undefined,
-      imageUrls: needsImage ? urls : undefined,
-    });
+    clearSubmitFailure();
+    setHiddenSubmitFailureId(null);
+    const wasAccepted = submit(
+      {
+        type: mode,
+        prompt,
+        size,
+        responseFormat,
+        files: needsImage ? files : undefined,
+        imageUrls: needsImage ? urls : undefined,
+      },
+      {
+        onTaskAccepted: () => {
+          // 服务端确认创建任务后再清空输入；若被内容策略拒绝，用户仍可直接修改原 prompt。
+          setSubmitFeedback('accepted');
+          setPrompt('');
+          setUrls([]);
+          setFiles([]);
+          clearImageDraft();
+          setFormKey((k) => k + 1);
+          window.setTimeout(() => setHistoryKey((k) => k + 1), 300);
+          if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
+          feedbackTimerRef.current = window.setTimeout(() => setSubmitFeedback('idle'), 1400);
+        },
+      }
+    );
     if (!wasAccepted) return;
-    setSubmitFeedback('accepted');
-    // 提交成功后清空当前输入与草稿，为下一次生成准备干净环境
-    setPrompt('');
-    setUrls([]);
-    setFiles([]);
-    clearImageDraft();
-    setFormKey((k) => k + 1);
-    // 触发历史列表刷新（任务已落库）
-    window.setTimeout(() => setHistoryKey((k) => k + 1), 300);
-    if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
-    feedbackTimerRef.current = window.setTimeout(() => setSubmitFeedback('idle'), 1400);
   }
 
   function onSizeChange(nextSize: string) {
@@ -282,7 +314,11 @@ export function ImageGenerate() {
           >
             {buttonLabel}
           </button>
-          <SubmitFeedback visible={accepted} message={t('tasks.acceptedHint')} />
+          <SubmitFeedback
+            visible={accepted || failed}
+            tone={failed ? 'error' : 'success'}
+            message={failed && imageSubmitFailure ? `${t('gallery.error')}${imageSubmitFailure.message}` : t('tasks.acceptedHint')}
+          />
         </div>
 
         <section className="landing-faq">

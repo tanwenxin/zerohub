@@ -101,7 +101,7 @@ function failTask(task, err) {
     progress: 100,
     error: {
       message: err.message || '视频生成失败',
-      userMessage: err.userMessage || '视频生成失败，请稍后再试',
+      userMessage: err.userMessage || err.message || '视频生成失败，请稍后再试',
       code: err.code || null,
       retryable: err.retryable !== false,
       status: err.status || null,

@@ -85,12 +85,20 @@ export function VideoGenerate() {
   const [files, setFiles] = useState<File[]>(() => readVideoDraftFiles());
   const [urls, setUrls] = useState<string[]>(() => readVideoDraft()?.urls ?? []);
   const [submitFeedback, setSubmitFeedback] = useState<'idle' | 'accepted'>('idle');
+  const [hiddenSubmitFailureId, setHiddenSubmitFailureId] = useState<string | null>(null);
   const [historyKey, setHistoryKey] = useState(0);
   const [promptAssessKey, setPromptAssessKey] = useState(0);
   const feedbackTimerRef = useRef<number | null>(null);
   const promptDirtyRef = useRef(false);
 
-  const { submitVideo, canSubmit: queueHasRoom, maxActive, submitLocked } = useTaskQueue();
+  const {
+    submitVideo,
+    canSubmit: queueHasRoom,
+    maxActive,
+    submitLocked,
+    lastSubmitFailure,
+    clearSubmitFailure,
+  } = useTaskQueue();
 
   useEffect(() => {
     return () => {
@@ -121,7 +129,14 @@ export function VideoGenerate() {
   const imageCount = files.length + urls.length;
   const enoughImages = !needsImage || imageCount >= minImages;
   const canSubmit = Boolean(prompt.trim()) && enoughImages;
-  const accepted = submitFeedback === 'accepted';
+  const videoSubmitFailure =
+    lastSubmitFailure && VIDEO_MODES.includes(lastSubmitFailure.type as VideoTaskType)
+      ? lastSubmitFailure
+      : null;
+  const failed = Boolean(
+    videoSubmitFailure && hiddenSubmitFailureId !== videoSubmitFailure.localId
+  );
+  const accepted = submitFeedback === 'accepted' && !failed;
   const estSeconds = (frames / frameRate).toFixed(1);
 
   const buttonLabel = needsImage && !enoughImages
@@ -145,31 +160,49 @@ export function VideoGenerate() {
     setPromptAssessKey((k) => k + 1);
   }
 
+  useEffect(() => {
+    if (!videoSubmitFailure) return;
+
+    if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
+    feedbackTimerRef.current = window.setTimeout(() => {
+      setHiddenSubmitFailureId(videoSubmitFailure.localId);
+      clearSubmitFailure();
+    }, 6000);
+  }, [clearSubmitFailure, videoSubmitFailure]);
+
   function onSubmit() {
     if (!canSubmit || !queueHasRoom || submitLocked) return;
+    clearSubmitFailure();
+    setHiddenSubmitFailureId(null);
     const [w, h] = sizeStr.split('x').map((v) => Number(v));
-    const wasAccepted = submitVideo({
-      type: mode,
-      prompt,
-      negativePrompt: negativePrompt.trim() || undefined,
-      width: w,
-      height: h,
-      numFrames: frames,
-      frameRate,
-      seed: seed.trim() ? Number(seed) : undefined,
-      files: needsImage ? files : undefined,
-      imageUrls: needsImage ? urls : undefined,
-    });
+    const wasAccepted = submitVideo(
+      {
+        type: mode,
+        prompt,
+        negativePrompt: negativePrompt.trim() || undefined,
+        width: w,
+        height: h,
+        numFrames: frames,
+        frameRate,
+        seed: seed.trim() ? Number(seed) : undefined,
+        files: needsImage ? files : undefined,
+        imageUrls: needsImage ? urls : undefined,
+      },
+      {
+        onTaskAccepted: () => {
+          // 服务端确认创建任务后再清空输入；若被内容策略拒绝，用户仍可直接修改原 prompt。
+          setSubmitFeedback('accepted');
+          setPrompt('');
+          setFiles([]);
+          setUrls([]);
+          clearVideoDraft();
+          window.setTimeout(() => setHistoryKey((k) => k + 1), 300);
+          if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
+          feedbackTimerRef.current = window.setTimeout(() => setSubmitFeedback('idle'), 1400);
+        },
+      }
+    );
     if (!wasAccepted) return;
-    setSubmitFeedback('accepted');
-    // 提交成功后清空临时输入（提示词与上传/参考图）与草稿，参数设置仍按偏好保留
-    setPrompt('');
-    setFiles([]);
-    setUrls([]);
-    clearVideoDraft();
-    window.setTimeout(() => setHistoryKey((k) => k + 1), 300);
-    if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
-    feedbackTimerRef.current = window.setTimeout(() => setSubmitFeedback('idle'), 1400);
   }
 
   function onVideoSizeChange(nextSize: string) {
@@ -373,7 +406,11 @@ export function VideoGenerate() {
           >
             {buttonLabel}
           </button>
-          <SubmitFeedback visible={accepted} message={t('tasks.acceptedHint')} />
+          <SubmitFeedback
+            visible={accepted || failed}
+            tone={failed ? 'error' : 'success'}
+            message={failed && videoSubmitFailure ? `${t('gallery.error')}${videoSubmitFailure.message}` : t('tasks.acceptedHint')}
+          />
         </div>
 
         <section className="landing-faq">
