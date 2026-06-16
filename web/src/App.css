@@ -48,9 +48,9 @@
   --space-6: 24px;
   --space-8: 32px;
   --space-12: 48px;
-  --section-y-desktop: 96px;
-  --section-y-tablet: 68px;
-  --section-y-phone: 48px;
+  --section-y-desktop: 72px;
+  --section-y-tablet: 52px;
+  --section-y-phone: 36px;
 
   /* 圆角 */
   --radius-sm: 8px;

@@ -6,6 +6,7 @@ const path = require('path');
 const rootDir = path.resolve(__dirname, '..');
 const webDir = path.join(rootDir, 'web');
 const webPublicDir = path.join(rootDir, 'web', 'public');
+const promptTemplatesFile = path.join(rootDir, 'server', 'content', 'prompt-templates.json');
 
 function readEnvFile(filePath) {
   if (!fs.existsSync(filePath)) return {};
@@ -51,6 +52,30 @@ const routes = [
   { path: '/contact', changefreq: 'monthly', priority: '0.5' },
 ];
 
+function promptTemplateRoutes() {
+  if (!fs.existsSync(promptTemplatesFile)) return [];
+  try {
+    const data = JSON.parse(fs.readFileSync(promptTemplatesFile, 'utf8'));
+    const categories = Array.isArray(data.categories) ? data.categories : [];
+    const templates = Array.isArray(data.templates) ? data.templates : [];
+    return [
+      { path: '/prompt-templates', changefreq: 'weekly', priority: '0.78' },
+      ...categories.map((category) => ({
+        path: `/prompt-templates/${category.slug}`,
+        changefreq: 'weekly',
+        priority: '0.72',
+      })),
+      ...templates.map((template) => ({
+        path: `/prompt-templates/${template.categorySlug}/${template.slug}`,
+        changefreq: 'monthly',
+        priority: '0.64',
+      })),
+    ];
+  } catch {
+    return [];
+  }
+}
+
 function absoluteUrl(routePath) {
   return `${siteUrl}${routePath === '/' ? '/' : routePath}`;
 }
@@ -66,7 +91,7 @@ function xmlEscape(value) {
 
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${routes
+${[...routes, ...promptTemplateRoutes()]
   .map((route) => `  <url>
     <loc>${xmlEscape(absoluteUrl(route.path))}</loc>
     <changefreq>${route.changefreq}</changefreq>

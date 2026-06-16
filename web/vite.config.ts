@@ -1,6 +1,13 @@
 import { defineConfig } from 'vite'
 import type {} from 'vite-react-ssg/node'
 import react from '@vitejs/plugin-react'
+import { PROMPT_TEMPLATE_CATEGORIES, PROMPT_TEMPLATES } from './src/data/promptTemplates.generated'
+
+const promptTemplateRoutes = [
+  '/prompt-templates',
+  ...PROMPT_TEMPLATE_CATEGORIES.map((category) => `/prompt-templates/${category.slug}`),
+  ...PROMPT_TEMPLATES.map((template) => `/prompt-templates/${template.categorySlug}/${template.slug}`),
+]
 
 // 前端开发服务器，将 /api 代理到后端 8787
 export default defineConfig({
@@ -46,7 +53,7 @@ export default defineConfig({
     },
     // 额外渲染 /404（匹配通配路由 NotFoundPage），产出 dist/404.html 供后端兜底
     includedRoutes(paths: string[]) {
-      return [...paths, '/404']
+      return Array.from(new Set([...paths, ...promptTemplateRoutes, '/404']))
     },
   },
 })

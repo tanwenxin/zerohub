@@ -19,6 +19,7 @@ export function SiteFooter({ wide = false }: SiteFooterProps) {
       </div>
       <nav className="site-footer-links" aria-label={t('footer.legalNav')}>
         <Link to="/guides">{t('nav.guides')}</Link>
+        <Link to="/prompt-templates">{t('nav.promptTemplates')}</Link>
         <Link to="/about">{t('nav.about')}</Link>
         <Link to="/privacy">{t('nav.privacy')}</Link>
         <Link to="/terms">{t('nav.terms')}</Link>

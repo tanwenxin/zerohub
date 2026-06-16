@@ -11,7 +11,7 @@ import type { TranslationKey } from './i18n';
 import { getSeoLandingRouteByPath } from './seoLandingRoutes';
 import { prefetchRoute } from './routePrefetch';
 
-type RouteKey = 'home' | 'image' | 'video' | 'guides' | 'about' | 'privacy' | 'terms' | 'contact' | 'notFound';
+type RouteKey = 'home' | 'image' | 'video' | 'guides' | 'promptTemplates' | 'about' | 'privacy' | 'terms' | 'contact' | 'notFound';
 
 const SITE_URL = (import.meta.env.VITE_SITE_URL || 'https://agnes-image-studio.xyz').replace(/\/+$/, '');
 const HEALTH_BOOT_DELAY_MS = 12000;
@@ -30,6 +30,7 @@ const AdsenseScript = lazy(() =>
 
 const NAV_ITEMS: { path: string; labelKey: TranslationKey; route: RouteKey }[] = [
   { path: '/', labelKey: 'nav.home', route: 'home' },
+  { path: '/prompt-templates', labelKey: 'nav.promptTemplates', route: 'promptTemplates' },
   { path: '/image', labelKey: 'nav.image', route: 'image' },
   { path: '/video', labelKey: 'nav.video', route: 'video' },
 ];
@@ -39,7 +40,9 @@ function normalizePath(pathname: string): string {
 }
 
 function routeFromPath(pathname: string): RouteKey {
-  switch (normalizePath(pathname)) {
+  const normalized = normalizePath(pathname);
+  if (normalized.startsWith('/prompt-templates')) return 'promptTemplates';
+  switch (normalized) {
     case '/':
       return 'home';
     case '/image':
@@ -51,6 +54,8 @@ function routeFromPath(pathname: string): RouteKey {
     case '/guides/commercial-use':
     case '/guides/safety':
       return 'guides';
+    case '/prompt-templates':
+      return 'promptTemplates';
     case '/about':
       return 'about';
     case '/privacy':
@@ -80,6 +85,7 @@ export default function App() {
       image: { titleKey: 'meta.image.title', descriptionKey: 'meta.image.description' },
       video: { titleKey: 'meta.video.title', descriptionKey: 'meta.video.description' },
       guides: { titleKey: 'meta.guides.title', descriptionKey: 'meta.guides.description' },
+      promptTemplates: { titleKey: 'meta.promptTemplates.title', descriptionKey: 'meta.promptTemplates.description' },
       about: { titleKey: 'meta.about.title', descriptionKey: 'meta.about.description' },
       privacy: { titleKey: 'meta.privacy.title', descriptionKey: 'meta.privacy.description' },
       terms: { titleKey: 'meta.terms.title', descriptionKey: 'meta.terms.description' },
@@ -109,6 +115,10 @@ export default function App() {
       description: meta.description,
     };
   }, [canonicalUrl, isSeoLandingRoute, meta.description, t]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.pathname]);
 
   useEffect(() => {
     const load = () => getHealth().then(setHealth).catch(() => setHealth(null));
@@ -152,7 +162,7 @@ export default function App() {
       ? t('health.ready')
       : t('health.noApiKey')
     : t('health.backendOffline');
-  const showFreeBadge = route === 'home' || route === 'image' || route === 'video';
+  const showFreeBadge = route === 'home' || route === 'image' || route === 'video' || route === 'promptTemplates';
 
   return (
     <div className="app app-shell">

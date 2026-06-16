@@ -178,7 +178,7 @@ function failTask(task, err) {
  * 返回：{ taskId }
  */
 router.post('/generate', upload.array('images', 8), (req, res) => {
-  const { type, prompt, size, responseFormat } = req.body;
+  const { type, prompt, size, responseFormat, source, templateId, templateSlug, templateCategorySlug } = req.body;
   const ownerId = getRequestOwnerId(req);
 
   if (!VALID_TYPES.includes(type)) {
@@ -261,6 +261,13 @@ router.post('/generate', upload.array('images', 8), (req, res) => {
       responseFormat: input.responseFormat,
       imageUrls: urlList,
       hadFiles: image.length > urlList.length,
+      source: source === 'prompt-template' ? 'prompt-template' : undefined,
+      templateId: typeof templateId === 'string' && templateId.trim() ? templateId.trim() : undefined,
+      templateSlug: typeof templateSlug === 'string' && templateSlug.trim() ? templateSlug.trim() : undefined,
+      templateCategorySlug:
+        typeof templateCategorySlug === 'string' && templateCategorySlug.trim()
+          ? templateCategorySlug.trim()
+          : undefined,
     },
   });
   taskInputs.set(task.id, input);

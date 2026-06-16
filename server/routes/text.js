@@ -122,6 +122,58 @@ router.post('/text/optimize-prompt', async (req, res) => {
 });
 
 /**
+ * POST /api/text/translate-prompt
+ * body: { prompt: string, targetLanguage: 'zh'|'en' }
+ * 将提示词在中英文之间翻译，保留生成参数、风格词、结构与约束，不添加解释。
+ */
+router.post('/text/translate-prompt', async (req, res) => {
+  if (!ensureApiConfigured(res)) return;
+
+  const { prompt, targetLanguage } = req.body || {};
+  const target = targetLanguage === 'en' ? 'en' : targetLanguage === 'zh' ? 'zh' : '';
+  if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
+    return sendDirectError(res, { status: 400, code: 'REQUEST_ERROR', message: 'prompt 不能为空' });
+  }
+  if (!target) {
+    return sendDirectError(res, {
+      status: 400,
+      code: 'REQUEST_ERROR',
+      message: 'targetLanguage 非法，应为 zh 或 en',
+    });
+  }
+
+  const targetName = target === 'zh' ? '中文' : 'English';
+  const messages = [
+    {
+      role: 'system',
+      content: [
+        '你是专业 AI 图像生成提示词翻译助手。',
+        `请将用户提供的提示词翻译为${targetName}。`,
+        '要求：准确保留主体、场景、风格、镜头、光照、构图、材质、参数、负向约束、品牌名、专有名词和分隔符语义。',
+        '只输出翻译后的提示词正文，不要添加解释、标题、序号、引号或 markdown。',
+      ].join('\n'),
+    },
+    { role: 'user', content: prompt.trim() },
+  ];
+
+  try {
+    const translated = await chatWithTextKeyRotation(messages, { action: 'translate_prompt', targetLanguage: target });
+    logger.info('text.translate_prompt.completed', { targetLanguage: target });
+    return res.json({ prompt: translated, targetLanguage: target });
+  } catch (err) {
+    logger.error('text.translate_prompt.failed', {
+      targetLanguage: target,
+      code: err.code || null,
+      status: err.status || null,
+      message: err.message,
+      userMessage: err.userMessage || null,
+      upstreamMessage: err.upstreamMessage || null,
+    });
+    return sendDirectError(res, err);
+  }
+});
+
+/**
  * POST /api/text/understand-image
  * body: { image: string, mode: <生成模式>, prompt?: string }
  * 分析图片（可结合用户已输入的 prompt），返回符合该模式规范的提示词。

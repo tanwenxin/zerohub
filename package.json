@@ -13,7 +13,11 @@
     "generate:seo": "node scripts/generate-seo-files.js",
     "inline:critical-css": "node scripts/inline-critical-css.js",
     "sync:public": "node scripts/sync-public.js",
-    "install:all": "npm install && npm --prefix web install --legacy-peer-deps"
+    "install:all": "npm install && npm --prefix web install --legacy-peer-deps",
+    "templates:normalize": "node scripts/prompt-templates/normalize-prompt-templates.js",
+    "templates:images": "node scripts/prompt-templates/generate-template-images.js --missing-only",
+    "templates:sync:web": "node scripts/prompt-templates/sync-web-prompt-templates.js",
+    "templates:update": "npm run templates:normalize && npm run templates:sync:web"
   },
   "dependencies": {
     "axios": "^1.7.7",

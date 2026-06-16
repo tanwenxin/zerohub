@@ -56,6 +56,10 @@ export interface GenerateParams {
   responseFormat: ResponseFormat;
   imageUrls?: string[];
   files?: File[];
+  source?: 'prompt-template';
+  templateId?: string;
+  templateSlug?: string;
+  templateCategorySlug?: string;
 }
 
 export interface VideoGenerateParams {
@@ -162,6 +166,10 @@ export async function generate(params: GenerateParams): Promise<{ taskId: string
   if (params.imageUrls && params.imageUrls.length) {
     form.append('imageUrls', JSON.stringify(params.imageUrls));
   }
+  if (params.source) form.append('source', params.source);
+  if (params.templateId) form.append('templateId', params.templateId);
+  if (params.templateSlug) form.append('templateSlug', params.templateSlug);
+  if (params.templateCategorySlug) form.append('templateCategorySlug', params.templateCategorySlug);
   if (params.files) {
     for (const f of params.files) form.append('images', f);
   }
@@ -246,6 +254,19 @@ export async function optimizePrompt(
     method: 'POST',
     headers: sessionHeaders({ 'Content-Type': 'application/json' }),
     body: JSON.stringify({ prompt, mode }),
+  });
+  if (!res.ok) await throwResponseError(res);
+  return res.json();
+}
+
+export async function translatePrompt(
+  prompt: string,
+  targetLanguage: 'zh' | 'en'
+): Promise<{ prompt: string; targetLanguage: 'zh' | 'en' }> {
+  const res = await fetch('/api/text/translate-prompt', {
+    method: 'POST',
+    headers: sessionHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify({ prompt, targetLanguage }),
   });
   if (!res.ok) await throwResponseError(res);
   return res.json();
@@ -421,4 +442,89 @@ export async function getPublicGenerationStats(days = 30): Promise<PublicGenerat
     throw new Error(data.error || `HTTP ${res.status}`);
   }
   return res.json();
+}
+
+export interface PromptTemplateCategory {
+  name: string;
+  slug: string;
+  count: number;
+  description: string;
+}
+
+export interface PromptTemplate {
+  id: string;
+  slug: string;
+  title: string;
+  prompt: string;
+  category: string;
+  categorySlug: string;
+  rawCategory: string;
+  sourceLine: number | null;
+  imageUrl: string | null;
+  imageStatus: string;
+  imageGeneratedAt: string | null;
+}
+
+export interface PromptTemplatePagination {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  hasPrev: boolean;
+  hasNext: boolean;
+}
+
+export interface PromptTemplateListResponse {
+  items: PromptTemplate[];
+  pagination: PromptTemplatePagination;
+  categories: PromptTemplateCategory[];
+  meta?: {
+    version: number;
+    updatedAt: string | null;
+    total: number;
+  };
+}
+
+export async function listPromptTemplates(params: {
+  page?: number;
+  pageSize?: number;
+  category?: string;
+  q?: string;
+} = {}): Promise<PromptTemplateListResponse> {
+  const qs = new URLSearchParams();
+  if (params.page) qs.set('page', String(params.page));
+  if (params.pageSize) qs.set('pageSize', String(params.pageSize));
+  if (params.category) qs.set('category', params.category);
+  if (params.q) qs.set('q', params.q);
+  const res = await fetch(`/api/prompt-templates?${qs.toString()}`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ error: 'Template query failed' }));
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function listPromptTemplateCategories(): Promise<PromptTemplateCategory[]> {
+  const res = await fetch('/api/prompt-templates/categories');
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ error: 'Category query failed' }));
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  return Array.isArray(data.categories) ? data.categories : [];
+}
+
+export async function getPromptTemplateByPath(
+  categorySlug: string,
+  templateSlug: string
+): Promise<PromptTemplate> {
+  const res = await fetch(
+    `/api/prompt-templates/category/${encodeURIComponent(categorySlug)}/${encodeURIComponent(templateSlug)}`
+  );
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ error: 'Template query failed' }));
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  return data.template;
 }

@@ -12,6 +12,7 @@ const ROUTE_IMPORTERS: Record<string, Importer> = {
   '/image': () => import('./pages/ImageGenerate'),
   '/video': () => import('./pages/VideoGenerate'),
   '/guides': () => import('./pages/GuidesPage'),
+  '/prompt-templates': () => import('./pages/PromptTemplatesPage'),
   '/about': () => import('./pages/AboutPage'),
   '/privacy': () => import('./pages/PrivacyPage'),
   '/terms': () => import('./pages/TermsPage'),

@@ -55,6 +55,18 @@ export const routes: RouteRecord[] = [
         },
       },
       {
+        path: 'prompt-templates',
+        lazy: async () => ({ Component: (await import('./pages/PromptTemplatesPage')).PromptTemplatesPage }),
+      },
+      {
+        path: 'prompt-templates/:categorySlug',
+        lazy: async () => ({ Component: (await import('./pages/PromptTemplatesPage')).PromptTemplateCategoryPage }),
+      },
+      {
+        path: 'prompt-templates/:categorySlug/:templateSlug',
+        lazy: async () => ({ Component: (await import('./pages/PromptTemplateDetailPage')).PromptTemplateDetailPage }),
+      },
+      {
         path: 'about',
         lazy: async () => ({ Component: (await import('./pages/AboutPage')).AboutPage }),
       },
