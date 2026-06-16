@@ -54,7 +54,6 @@ export function ImageGenerate() {
   const [urls, setUrls] = useState<string[]>(() => readImageDraft()?.urls ?? []);
   const [submitFeedback, setSubmitFeedback] = useState<'idle' | 'accepted'>('idle');
   const [hiddenSubmitFailureId, setHiddenSubmitFailureId] = useState<string | null>(null);
-  const [historyKey, setHistoryKey] = useState(0); // 提交后触发历史刷新
   const [formKey, setFormKey] = useState(0); // 回填/清空时强制 PromptForm 重新初始化
   const [promptAssessKey, setPromptAssessKey] = useState(0);
   const feedbackTimerRef = useRef<number | null>(null);
@@ -162,7 +161,6 @@ export function ImageGenerate() {
           setFiles([]);
           clearImageDraft();
           setFormKey((k) => k + 1);
-          window.setTimeout(() => setHistoryKey((k) => k + 1), 300);
           if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
           feedbackTimerRef.current = window.setTimeout(() => setSubmitFeedback('idle'), 1400);
         },
@@ -335,7 +333,6 @@ export function ImageGenerate() {
         <h3 className="history-title">{t('task.historyTitle')}</h3>
         <TaskHistory
           category="image"
-          refreshSignal={historyKey}
           currentPrompt={prompt}
           onPromptFill={setPrompt}
           onFill={onHistoryFill}

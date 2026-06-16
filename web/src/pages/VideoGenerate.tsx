@@ -86,7 +86,6 @@ export function VideoGenerate() {
   const [urls, setUrls] = useState<string[]>(() => readVideoDraft()?.urls ?? []);
   const [submitFeedback, setSubmitFeedback] = useState<'idle' | 'accepted'>('idle');
   const [hiddenSubmitFailureId, setHiddenSubmitFailureId] = useState<string | null>(null);
-  const [historyKey, setHistoryKey] = useState(0);
   const [promptAssessKey, setPromptAssessKey] = useState(0);
   const feedbackTimerRef = useRef<number | null>(null);
   const promptDirtyRef = useRef(false);
@@ -196,7 +195,6 @@ export function VideoGenerate() {
           setFiles([]);
           setUrls([]);
           clearVideoDraft();
-          window.setTimeout(() => setHistoryKey((k) => k + 1), 300);
           if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
           feedbackTimerRef.current = window.setTimeout(() => setSubmitFeedback('idle'), 1400);
         },
@@ -427,7 +425,6 @@ export function VideoGenerate() {
         <h3 className="history-title">{t('task.historyTitle')}</h3>
         <TaskHistory
           category="video"
-          refreshSignal={historyKey}
           currentPrompt={prompt}
           onPromptFill={setPrompt}
           onFill={onHistoryFill}

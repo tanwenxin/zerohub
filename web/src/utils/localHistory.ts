@@ -1,6 +1,10 @@
 import type { Task } from '../api/client';
 
 type HistoryCategory = 'image' | 'video';
+export type LocalHistoryUpdateDetail =
+  | { action: 'upsert'; task: Task; category: HistoryCategory }
+  | { action: 'remove'; id: string }
+  | { action: 'replace' };
 
 interface LocalHistoryState {
   version: 1;
@@ -72,13 +76,17 @@ function readState(): LocalHistoryState {
   }
 }
 
-function writeState(tasks: Task[]) {
+function dispatchLocalHistoryUpdated(detail: LocalHistoryUpdateDetail) {
+  window.dispatchEvent(new CustomEvent<LocalHistoryUpdateDetail>(LOCAL_HISTORY_UPDATED_EVENT, { detail }));
+}
+
+function writeState(tasks: Task[], detail: LocalHistoryUpdateDetail = { action: 'replace' }) {
   if (typeof window === 'undefined') return;
 
   try {
     const state: LocalHistoryState = { version: 1, tasks: trimTasks(tasks) };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-    window.dispatchEvent(new Event(LOCAL_HISTORY_UPDATED_EVENT));
+    dispatchLocalHistoryUpdated(detail);
   } catch {
     /* 忽略本地存储不可用 / 超出配额 */
   }
@@ -126,11 +134,15 @@ export function readLocalHistory(category?: HistoryCategory, limit = MAX_ITEMS_P
 }
 
 export function upsertLocalHistory(task: Task): void {
-  writeState(upsertTask(readState().tasks, task));
+  writeState(upsertTask(readState().tasks, task), {
+    action: 'upsert',
+    task,
+    category: taskCategory(task),
+  });
 }
 
 export function removeLocalHistory(id: string): void {
-  writeState(readState().tasks.filter((task) => task.id != id));
+  writeState(readState().tasks.filter((task) => task.id != id), { action: 'remove', id });
 }
 
 export async function refreshLocalHistoryTask(
@@ -142,12 +154,20 @@ export async function refreshLocalHistoryTask(
 
   try {
     const task = await fetchTask(id);
-    writeState(upsertTask(readState().tasks, task));
+    writeState(upsertTask(readState().tasks, task), {
+      action: 'upsert',
+      task,
+      category: taskCategory(task),
+    });
     return task;
   } catch (error) {
     if (!existing) return null;
     const expired = markExpired(existing, errorMessage(error));
-    writeState(upsertTask(readState().tasks, expired));
+    writeState(upsertTask(readState().tasks, expired), {
+      action: 'upsert',
+      task: expired,
+      category: taskCategory(expired),
+    });
     return expired;
   }
 }

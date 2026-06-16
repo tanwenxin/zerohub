@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
   getTask,
   refreshTask,
@@ -8,6 +8,7 @@ import {
 } from '../api/client';
 import {
   LOCAL_HISTORY_UPDATED_EVENT,
+  type LocalHistoryUpdateDetail,
   readLocalHistory,
   refreshActiveLocalHistory,
   removeLocalHistory,
@@ -48,23 +49,72 @@ const ACTIVE_STATUSES: Task['status'][] = ['pending', 'queued', 'running'];
 type HistoryCategory = 'image' | 'video';
 const PROMPT_COLLAPSE_THRESHOLD = 120;
 const HISTORY_MEDIA_ROOT_MARGIN = '80px';
+const historyMediaRequestedCache = new Set<string>();
+const historyMediaLoadedCache = new Set<string>();
 
-function useLazyMedia<T extends HTMLElement>() {
+function taskRevisionKey(task: Task): string {
+  const images = (task.result?.images || [])
+    .map((img) => [
+      img.url || '',
+      img.b64 ? `${img.b64.length}:${img.b64.slice(0, 16)}` : '',
+      img.revisedPrompt || '',
+    ].join('~'))
+    .join('|');
+  return [
+    task.id,
+    task.type,
+    task.category || '',
+    task.status,
+    task.progress,
+    task.createdAt,
+    task.updatedAt,
+    task.durationMs || '',
+    task.videoId || '',
+    task.result?.created || '',
+    task.result?.videoUrl || '',
+    task.result?.size || '',
+    task.result?.seconds || '',
+    task.result?.videoId || '',
+    images,
+    task.error?.message || '',
+    task.error?.userMessage || '',
+  ].join('::');
+}
+
+function mergeHistoryTasks(previous: Task[], incoming: Task[]): Task[] {
+  const previousById = new Map(previous.map((task) => [String(task.id), task]));
+  return incoming.map((task) => {
+    const existing = previousById.get(String(task.id));
+    return existing && taskRevisionKey(existing) === taskRevisionKey(task) ? existing : task;
+  });
+}
+
+function readMergedLocalHistory(category: HistoryCategory, previous: Task[]): Task[] {
+  return mergeHistoryTasks(previous, readLocalHistory(category, 100));
+}
+
+function useLazyMedia<T extends HTMLElement>(src: string) {
   const ref = useRef<T | null>(null);
-  const [shouldLoad, setShouldLoad] = useState(false);
+  const [shouldLoad, setShouldLoad] = useState(() => (
+    historyMediaRequestedCache.has(src) || historyMediaLoadedCache.has(src)
+  ));
 
   useEffect(() => {
     if (shouldLoad) return;
     const node = ref.current;
     if (!node) return;
     if (typeof IntersectionObserver === 'undefined') {
-      const id = window.setTimeout(() => setShouldLoad(true), 0);
+      const id = window.setTimeout(() => {
+        historyMediaRequestedCache.add(src);
+        setShouldLoad(true);
+      }, 0);
       return () => window.clearTimeout(id);
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
+        historyMediaRequestedCache.add(src);
         setShouldLoad(true);
         observer.disconnect();
       },
@@ -73,14 +123,20 @@ function useLazyMedia<T extends HTMLElement>() {
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [shouldLoad]);
+  }, [shouldLoad, src]);
 
   return { ref, shouldLoad };
 }
 
-function LazyHistoryImage({ src, alt }: { src: string; alt: string }) {
-  const { ref, shouldLoad } = useLazyMedia<HTMLSpanElement>();
-  const [loaded, setLoaded] = useState(false);
+const LazyHistoryImage = memo(function LazyHistoryImage({ src, alt }: { src: string; alt: string }) {
+  const { ref, shouldLoad } = useLazyMedia<HTMLSpanElement>(src);
+  const [loaded, setLoaded] = useState(() => historyMediaLoadedCache.has(src));
+
+  function markLoaded() {
+    historyMediaRequestedCache.add(src);
+    historyMediaLoadedCache.add(src);
+    setLoaded(true);
+  }
 
   return (
     <span
@@ -99,17 +155,23 @@ function LazyHistoryImage({ src, alt }: { src: string; alt: string }) {
           alt={alt}
           loading="lazy"
           decoding="async"
-          onLoad={() => setLoaded(true)}
-          onError={() => setLoaded(true)}
+          onLoad={markLoaded}
+          onError={markLoaded}
         />
       ) : null}
     </span>
   );
-}
+});
 
-function LazyHistoryVideo({ src, label }: { src: string; label: string }) {
-  const { ref, shouldLoad } = useLazyMedia<HTMLDivElement>();
-  const [loaded, setLoaded] = useState(false);
+const LazyHistoryVideo = memo(function LazyHistoryVideo({ src, label }: { src: string; label: string }) {
+  const { ref, shouldLoad } = useLazyMedia<HTMLDivElement>(src);
+  const [loaded, setLoaded] = useState(() => historyMediaLoadedCache.has(src));
+
+  function markLoaded() {
+    historyMediaRequestedCache.add(src);
+    historyMediaLoadedCache.add(src);
+    setLoaded(true);
+  }
 
   return (
     <div
@@ -128,15 +190,15 @@ function LazyHistoryVideo({ src, label }: { src: string; label: string }) {
           controls
           playsInline
           preload="metadata"
-          onLoadedMetadata={() => setLoaded(true)}
-          onError={() => setLoaded(true)}
+          onLoadedMetadata={markLoaded}
+          onError={markLoaded}
         >
           {label}
         </video>
       ) : null}
     </div>
   );
-}
+});
 
 function historyStorageKey(category: HistoryCategory, name: string): string {
   return `agnes:${category}-history-${name}`;
@@ -247,10 +309,11 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
   const load = useCallback(async () => {
     try {
       const localTasks = readLocalHistory(category, 100);
-      setTasks(localTasks);
+      setTasks((prev) => mergeHistoryTasks(prev, localTasks));
       setLoading(false);
       if (localTasks.some((t) => ACTIVE_STATUSES.includes(t.status))) {
-        setTasks(await refreshActiveLocalHistory(category, getTask));
+        const refreshedTasks = await refreshActiveLocalHistory(category, getTask);
+        setTasks((prev) => mergeHistoryTasks(prev, refreshedTasks));
       }
     } catch {
       /* 忽略瞬时错误，下次轮询重试 */
@@ -302,8 +365,15 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
   }, [category]);
 
   useEffect(() => {
-    const syncLocalHistory = () => {
-      setTasks(readLocalHistory(category, 100));
+    const syncLocalHistory = (event: Event) => {
+      const detail = (event as CustomEvent<LocalHistoryUpdateDetail>).detail;
+      if (detail?.action === 'upsert' && detail.category !== category) return;
+      if (detail?.action === 'remove') {
+        setTasks((prev) => prev.filter((task) => String(task.id) !== String(detail.id)));
+        setLoading(false);
+        return;
+      }
+      setTasks((prev) => readMergedLocalHistory(category, prev));
       setLoading(false);
     };
     window.addEventListener(LOCAL_HISTORY_UPDATED_EVENT, syncLocalHistory);
@@ -333,11 +403,11 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
       await refreshTask(task.id, category);
       const refreshed = await getTask(task.id);
       upsertLocalHistory(refreshed);
-      setTasks(readLocalHistory(category, 100));
+      setTasks((prev) => readMergedLocalHistory(category, prev));
     } catch (e) {
       // 刷新失败（如限流/无法重放）：提示并仍刷新列表
       alert((e as Error).message);
-      setTasks(readLocalHistory(category, 100));
+      setTasks((prev) => readMergedLocalHistory(category, prev));
     } finally {
       setRefreshingId(null);
     }
