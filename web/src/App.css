@@ -1764,19 +1764,33 @@ select:focus {
 .media-preview-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  width: 100dvw;
+  height: 100dvh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  z-index: 2147483647;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 24px;
+  padding: clamp(12px, 3vh, 28px);
   background: rgba(0, 0, 0, 0.72);
+  color: var(--text);
   backdrop-filter: blur(8px);
 }
+.media-preview-backdrop::backdrop {
+  background: transparent;
+}
+.media-preview-backdrop:not([open]) {
+  display: none;
+}
 .media-preview-dialog {
-  width: min(96vw, 1120px);
-  max-height: 92vh;
-  display: flex;
-  flex-direction: column;
+  width: min(92vw, 1040px);
+  max-width: calc(100vw - clamp(24px, 6vw, 56px));
+  max-height: calc(100dvh - clamp(24px, 6vh, 56px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 18px;
@@ -1785,6 +1799,7 @@ select:focus {
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
 }
 .media-preview-header {
+  flex: 0 0 auto;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -1824,6 +1839,7 @@ select:focus {
 }
 .media-preview-body {
   min-height: 0;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1834,7 +1850,7 @@ select:focus {
 .media-preview-body video {
   display: block;
   max-width: 100%;
-  max-height: 68vh;
+  max-height: 100%;
   object-fit: contain;
   border-radius: 12px;
   background: #000;
@@ -1843,6 +1859,7 @@ select:focus {
   width: 100%;
 }
 .media-preview-actions {
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
@@ -1856,6 +1873,10 @@ select:focus {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+body.is-media-preview-open .prompt-optimize-control {
+  z-index: 0;
+  pointer-events: none;
 }
 
 .result-error {
@@ -2484,11 +2505,13 @@ input[type='number']:focus {
 
   .media-preview-backdrop {
     padding: 10px;
+    align-items: center;
   }
 
   .media-preview-dialog {
-    width: 100%;
-    max-height: 94vh;
+    width: min(100%, 680px);
+    max-width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
     border-radius: 14px;
   }
 
@@ -2498,7 +2521,7 @@ input[type='number']:focus {
 
   .media-preview-body img,
   .media-preview-body video {
-    max-height: 70vh;
+    max-height: 100%;
   }
 
   .media-preview-actions {

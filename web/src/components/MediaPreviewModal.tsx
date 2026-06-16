@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { usePreferences } from '../usePreferences';
 
 export type PreviewMedia =
@@ -25,6 +26,7 @@ interface MediaPreviewModalProps {
 
 export function MediaPreviewModal({ media, onClose }: MediaPreviewModalProps) {
   const { t } = usePreferences();
+  const dialogRef = useRef<HTMLDialogElement | null>(null);
 
   useEffect(() => {
     if (!media) return undefined;
@@ -37,18 +39,44 @@ export function MediaPreviewModal({ media, onClose }: MediaPreviewModalProps) {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [media, onClose]);
 
+  useEffect(() => {
+    if (!media || typeof document === 'undefined') return undefined;
+
+    const dialog = dialogRef.current;
+    document.body.classList.add('is-media-preview-open');
+
+    if (dialog && typeof dialog.showModal === 'function' && !dialog.open) {
+      try {
+        dialog.showModal();
+      } catch {
+        dialog.setAttribute('open', '');
+      }
+    } else if (dialog && !dialog.open) {
+      dialog.setAttribute('open', '');
+    }
+
+    return () => {
+      document.body.classList.remove('is-media-preview-open');
+      if (dialog?.open) dialog.close();
+    };
+  }, [media]);
+
   if (!media) return null;
 
   const label = media.kind === 'image' ? t('preview.imageLabel') : t('preview.videoLabel');
   const downloadLabel = media.kind === 'image' ? t('gallery.download') : t('gallery.video.download');
 
-  return (
-    <div
+  const modal = (
+    <dialog
+      ref={dialogRef}
       className="media-preview-backdrop"
-      role="dialog"
       aria-modal="true"
       aria-label={label}
       onClick={onClose}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
     >
       <div className="media-preview-dialog" onClick={(event) => event.stopPropagation()}>
         <div className="media-preview-header">
@@ -80,6 +108,9 @@ export function MediaPreviewModal({ media, onClose }: MediaPreviewModalProps) {
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
+
+  if (typeof document === 'undefined') return modal;
+  return createPortal(modal, document.body);
 }
