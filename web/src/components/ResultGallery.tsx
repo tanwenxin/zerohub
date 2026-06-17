@@ -1,9 +1,16 @@
+import { useState } from 'react';
 import { downloadUrl, type Task } from '../api/client';
 import { usePreferences } from '../usePreferences';
 import { formatDuration } from '../utils/duration';
+import { aspectRatioFromSize } from '../utils/media';
+import { BlobDownloadButton } from './BlobDownloadButton';
+import { LazyImage } from './LazyMedia';
+import { MediaPreviewModal, type PreviewMedia } from './MediaPreviewModal';
+import { MediaPreviewTrigger } from './MediaPreviewTrigger';
 
 export function ResultGallery({ task }: { task: Task }) {
   const { t } = usePreferences();
+  const [previewMedia, setPreviewMedia] = useState<PreviewMedia | null>(null);
 
   if (task.status === 'error') {
     const err = task.error;
@@ -38,36 +45,60 @@ export function ResultGallery({ task }: { task: Task }) {
   if (!images.length) return <div className="result-error">{t('gallery.noImages')}</div>;
 
   const duration = formatDuration(task.durationMs);
+  const size = (task.params?.size as string) || (task.result?.size as string) || '';
 
   return (
-    <div className="gallery">
-      {duration && (
-        <div className="duration-badge gallery-duration" title={t('gallery.duration', { duration })}>
-          <span className="duration-icon" aria-hidden="true">⏱</span>
-          {t('gallery.duration', { duration })}
-        </div>
-      )}
-      {images.map((img, i) => {
-        const src = img.url || (img.b64 ? `data:image/png;base64,${img.b64}` : '');
-        return (
-          <div className="gallery-item" key={i}>
-            <img src={src} alt={`result-${i}`} />
-            <div className="gallery-actions">
-              <a className="btn-primary" href={downloadUrl(task.id, i)}>
-                {t('gallery.download')}
-              </a>
-              {img.url && (
-                <a className="btn-secondary" href={img.url} target="_blank" rel="noreferrer">
-                  {t('gallery.original')}
-                </a>
+    <>
+      <div className="gallery">
+        {duration && (
+          <div className="duration-badge gallery-duration" title={t('gallery.duration', { duration })}>
+            <span className="duration-icon" aria-hidden="true">⏱</span>
+            {t('gallery.duration', { duration })}
+          </div>
+        )}
+        {images.map((img, i) => {
+          const src = img.url || (img.b64 ? `data:image/png;base64,${img.b64}` : '');
+          return (
+            <div className="gallery-item" key={i}>
+              <MediaPreviewTrigger
+                onPreview={setPreviewMedia}
+                media={{
+                  kind: 'image',
+                  src,
+                  alt: `result-${i}`,
+                  downloadHref: downloadUrl(task.id, i),
+                  originalHref: img.url || undefined,
+                  title: t('task.historyTitle'),
+                  meta: size,
+                }}
+              >
+                <LazyImage
+                  src={src}
+                  alt={`result-${i}`}
+                  aspectRatio={aspectRatioFromSize(size)}
+                />
+              </MediaPreviewTrigger>
+              <div className="gallery-actions">
+                <BlobDownloadButton
+                  href={downloadUrl(task.id, i)}
+                  fileName={`agnes-image-${task.id}-${i + 1}.png`}
+                  label={t('gallery.download')}
+                  loadingLabel={t('gallery.downloading')}
+                />
+                {img.url && (
+                  <a className="btn-secondary" href={img.url} target="_blank" rel="noreferrer">
+                    {t('gallery.original')}
+                  </a>
+                )}
+              </div>
+              {img.revisedPrompt && (
+                <p className="revised">{t('gallery.revisedPrompt', { prompt: img.revisedPrompt })}</p>
               )}
             </div>
-            {img.revisedPrompt && (
-              <p className="revised">{t('gallery.revisedPrompt', { prompt: img.revisedPrompt })}</p>
-            )}
-          </div>
-        );
-      })}
-    </div>
+          );
+        })}
+      </div>
+      <MediaPreviewModal media={previewMedia} onClose={() => setPreviewMedia(null)} />
+    </>
   );
 }

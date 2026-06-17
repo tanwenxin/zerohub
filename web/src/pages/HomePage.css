@@ -3,8 +3,12 @@
   max-width: var(--container-max);
   margin: 0 auto;
 }
+.home-page > .ui-section {
+  padding-block: 56px;
+}
 .home-page > .ui-section:first-child {
   padding-top: var(--space-8);
+  padding-bottom: 52px;
 }
 
 /* hero 区 */
@@ -500,6 +504,15 @@
 }
 
 @media (max-width: 980px) {
+  .home-page > .ui-section {
+    padding-block: 42px;
+  }
+
+  .home-page > .ui-section:first-child {
+    padding-top: 28px;
+    padding-bottom: 42px;
+  }
+
   .home-hero,
   .director-grid,
   .brand-system,
@@ -511,6 +524,15 @@
   }
 }
 @media (max-width: 620px) {
+  .home-page > .ui-section {
+    padding-block: 30px;
+  }
+
+  .home-page > .ui-section:first-child {
+    padding-top: 20px;
+    padding-bottom: 30px;
+  }
+
   .telemetry {
     grid-template-columns: 1fr;
   }

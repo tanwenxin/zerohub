@@ -233,6 +233,7 @@ export function Uploader({
                   src: u,
                   alt: `url-${i}`,
                   downloadHref: u,
+                  originalHref: u,
                   title: t('uploader.url'),
                   meta: u,
                 });

@@ -2,6 +2,9 @@ import { useMemo, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { Head } from 'vite-react-ssg';
 import { translatePrompt } from '../api/client';
+import { LazyImage } from '../components/LazyMedia';
+import { MediaPreviewModal, type PreviewMedia } from '../components/MediaPreviewModal';
+import { MediaPreviewTrigger } from '../components/MediaPreviewTrigger';
 import { Badge, Button, ButtonLink, Card, Container, Eyebrow, Section } from '../components/ui';
 import {
   getPromptTemplateByPath,
@@ -43,6 +46,7 @@ export function PromptTemplateDetailPage() {
   const [translating, setTranslating] = useState(false);
   const [translationError, setTranslationError] = useState('');
   const [templateSubmitState, setTemplateSubmitState] = useState<'idle' | 'accepted' | 'blocked'>('idle');
+  const [previewMedia, setPreviewMedia] = useState<PreviewMedia | null>(null);
   const { submit, canSubmit: queueHasRoom, submitLocked } = useTaskQueue();
 
   const related = useMemo(() => {
@@ -63,6 +67,10 @@ export function PromptTemplateDetailPage() {
   const translateLabel = targetLanguage === 'zh' ? (en ? 'Translate to Chinese' : '翻译成中文') : (en ? 'Translate to English' : '翻译成英文');
   const localizedCategoryName = categoryName(currentTemplate.categorySlug, currentTemplate.category, language);
   const imageSources = promptTemplateImageSources(currentTemplate, 'detail');
+  const pictureSources = [
+    imageSources.avifSrcSet ? { type: 'image/avif', srcSet: imageSources.avifSrcSet } : null,
+    imageSources.webpSrcSet ? { type: 'image/webp', srcSet: imageSources.webpSrcSet } : null,
+  ].filter((source): source is { type: string; srcSet: string } => Boolean(source));
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'CreativeWork',
@@ -221,24 +229,34 @@ export function PromptTemplateDetailPage() {
           </div>
           <Card className="prompt-template-detail-media" as="figure">
             {imageSources.fallbackSrc ? (
-              <picture>
-                {imageSources.avifSrcSet ? (
-                  <source type="image/avif" srcSet={imageSources.avifSrcSet} sizes={imageSources.sizes} />
-                ) : null}
-                {imageSources.webpSrcSet ? (
-                  <source type="image/webp" srcSet={imageSources.webpSrcSet} sizes={imageSources.sizes} />
-                ) : null}
-                <img
+              <MediaPreviewTrigger
+                onPreview={setPreviewMedia}
+                media={{
+                  kind: 'image',
+                  src: imageSources.fallbackSrc,
+                  alt: currentTemplate.title,
+                  downloadHref: imageSources.fallbackSrc,
+                  originalHref: currentTemplate.imageUrl || undefined,
+                  title: currentTemplate.title,
+                  meta: localizedCategoryName,
+                }}
+              >
+                <LazyImage
                   src={imageSources.fallbackSrc}
                   srcSet={imageSources.fallbackSrcSet}
+                  sources={pictureSources}
                   sizes={imageSources.sizes}
                   width={960}
                   height={720}
                   alt={currentTemplate.title}
+                  aspectRatio="1 / 1"
+                  className="prompt-template-detail-lazy"
+                  loading="eager"
                   decoding="async"
                   fetchPriority="high"
+                  placeholder={<span>{en ? 'IMAGE LOADING' : '图片加载中'}</span>}
                 />
-              </picture>
+              </MediaPreviewTrigger>
             ) : (
               <span>{en ? 'IMAGE PENDING' : '图片待生成'}</span>
             )}
@@ -308,6 +326,7 @@ export function PromptTemplateDetailPage() {
           </div>
         </Container>
       </Section>
+      <MediaPreviewModal media={previewMedia} onClose={() => setPreviewMedia(null)} />
     </article>
   );
 }

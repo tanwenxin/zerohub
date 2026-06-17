@@ -2,21 +2,31 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { usePreferences } from '../usePreferences';
 
+type PreviewInfoItem = {
+  label: string;
+  value: string;
+  href?: string;
+};
+
 export type PreviewMedia =
   | {
       kind: 'image';
       src: string;
       alt: string;
       downloadHref: string;
+      originalHref?: string;
       title?: string;
       meta?: string;
+      info?: PreviewInfoItem[];
     }
   | {
       kind: 'video';
       src: string;
       downloadHref: string;
+      originalHref?: string;
       title?: string;
       meta?: string;
+      info?: PreviewInfoItem[];
     };
 
 interface MediaPreviewModalProps {
@@ -65,6 +75,7 @@ export function MediaPreviewModal({ media, onClose }: MediaPreviewModalProps) {
 
   const label = media.kind === 'image' ? t('preview.imageLabel') : t('preview.videoLabel');
   const downloadLabel = media.kind === 'image' ? t('gallery.download') : t('gallery.video.download');
+  const infoItems = media.info || [];
 
   const modal = (
     <dialog
@@ -99,10 +110,34 @@ export function MediaPreviewModal({ media, onClose }: MediaPreviewModalProps) {
           )}
         </div>
 
+        {infoItems.length > 0 ? (
+          <dl className="media-preview-info" aria-label={t('preview.info')}>
+            {infoItems.map((item, index) => (
+              <div key={`${item.label}-${index}`}>
+                <dt>{item.label}</dt>
+                <dd>
+                  {item.href ? (
+                    <a href={item.href} target="_blank" rel="noreferrer">
+                      {item.value}
+                    </a>
+                  ) : (
+                    item.value
+                  )}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        ) : null}
+
         <div className="media-preview-actions">
           <a className="btn-primary" href={media.downloadHref}>
             {downloadLabel}
           </a>
+          {media.originalHref ? (
+            <a className="btn-secondary" href={media.originalHref} target="_blank" rel="noreferrer">
+              {media.kind === 'image' ? t('preview.openOriginal') : t('gallery.video.open')}
+            </a>
+          ) : null}
           <button className="btn-secondary" type="button" onClick={onClose}>
             {t('preview.close')}
           </button>

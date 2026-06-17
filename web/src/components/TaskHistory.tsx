@@ -1,4 +1,4 @@
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
   getTask,
   refreshTask,
@@ -15,6 +15,8 @@ import {
   upsertLocalHistory,
 } from '../utils/localHistory';
 import { MediaPreviewModal, type PreviewMedia } from './MediaPreviewModal';
+import { MediaPreviewTrigger } from './MediaPreviewTrigger';
+import { LazyImage, LazyVideo } from './LazyMedia';
 import {
   HistoryToolbar,
   type HistorySort,
@@ -25,6 +27,7 @@ import { HistoryAdSlot } from './HistoryAdSlot';
 import { MasonryGrid } from './MasonryGrid';
 import { usePreferences } from '../usePreferences';
 import { formatDuration } from '../utils/duration';
+import { aspectRatioFromSize } from '../utils/media';
 import type { TranslationKey } from '../i18n';
 
 const TYPE_LABEL_KEY: Record<Task['type'], TranslationKey> = {
@@ -48,9 +51,6 @@ const STATUS_KEY: Record<Task['status'], TranslationKey> = {
 const ACTIVE_STATUSES: Task['status'][] = ['pending', 'queued', 'running'];
 type HistoryCategory = 'image' | 'video';
 const PROMPT_COLLAPSE_THRESHOLD = 120;
-const HISTORY_MEDIA_ROOT_MARGIN = '80px';
-const historyMediaRequestedCache = new Set<string>();
-const historyMediaLoadedCache = new Set<string>();
 
 function taskRevisionKey(task: Task): string {
   const images = (task.result?.images || [])
@@ -92,132 +92,6 @@ function mergeHistoryTasks(previous: Task[], incoming: Task[]): Task[] {
 function readMergedLocalHistory(category: HistoryCategory, previous: Task[]): Task[] {
   return mergeHistoryTasks(previous, readLocalHistory(category, 100));
 }
-
-function aspectRatioFromSize(size: string): string {
-  const match = size.match(/^(\d{2,5})x(\d{2,5})$/);
-  if (!match) return '4 / 3';
-  const width = Number(match[1]);
-  const height = Number(match[2]);
-  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return '4 / 3';
-  return `${width} / ${height}`;
-}
-
-function useLazyMedia<T extends HTMLElement>(src: string) {
-  const ref = useRef<T | null>(null);
-  const [shouldLoad, setShouldLoad] = useState(() => (
-    historyMediaRequestedCache.has(src) || historyMediaLoadedCache.has(src)
-  ));
-
-  useEffect(() => {
-    if (shouldLoad) return;
-    const node = ref.current;
-    if (!node) return;
-    if (typeof IntersectionObserver === 'undefined') {
-      const id = window.setTimeout(() => {
-        historyMediaRequestedCache.add(src);
-        setShouldLoad(true);
-      }, 0);
-      return () => window.clearTimeout(id);
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return;
-        historyMediaRequestedCache.add(src);
-        setShouldLoad(true);
-        observer.disconnect();
-      },
-      { rootMargin: HISTORY_MEDIA_ROOT_MARGIN }
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, [shouldLoad, src]);
-
-  return { ref, shouldLoad };
-}
-
-const LazyHistoryImage = memo(function LazyHistoryImage({
-  src,
-  alt,
-  aspectRatio,
-}: {
-  src: string;
-  alt: string;
-  aspectRatio: string;
-}) {
-  const { ref, shouldLoad } = useLazyMedia<HTMLSpanElement>(src);
-  const [loaded, setLoaded] = useState(() => historyMediaLoadedCache.has(src));
-  const style = useMemo<CSSProperties>(() => ({ aspectRatio }), [aspectRatio]);
-
-  function markLoaded() {
-    historyMediaRequestedCache.add(src);
-    historyMediaLoadedCache.add(src);
-    setLoaded(true);
-  }
-
-  return (
-    <span
-      ref={ref}
-      style={style}
-      className={[
-        'lazy-history-media',
-        'lazy-history-image',
-        shouldLoad ? 'is-requested' : '',
-        loaded ? 'is-loaded' : '',
-      ].filter(Boolean).join(' ')}
-    >
-      {shouldLoad ? (
-        <img
-          className={`lazy-history-media-content ${loaded ? 'is-loaded' : ''}`}
-          src={src}
-          alt={alt}
-          loading="lazy"
-          decoding="async"
-          onLoad={markLoaded}
-          onError={markLoaded}
-        />
-      ) : null}
-    </span>
-  );
-});
-
-const LazyHistoryVideo = memo(function LazyHistoryVideo({ src, label }: { src: string; label: string }) {
-  const { ref, shouldLoad } = useLazyMedia<HTMLDivElement>(src);
-  const [loaded, setLoaded] = useState(() => historyMediaLoadedCache.has(src));
-
-  function markLoaded() {
-    historyMediaRequestedCache.add(src);
-    historyMediaLoadedCache.add(src);
-    setLoaded(true);
-  }
-
-  return (
-    <div
-      ref={ref}
-      className={[
-        'lazy-history-media',
-        'lazy-history-video',
-        shouldLoad ? 'is-requested' : '',
-        loaded ? 'is-loaded' : '',
-      ].filter(Boolean).join(' ')}
-    >
-      {shouldLoad ? (
-        <video
-          className={`video-player lazy-history-media-content ${loaded ? 'is-loaded' : ''}`}
-          src={src}
-          controls
-          playsInline
-          preload="metadata"
-          onLoadedMetadata={markLoaded}
-          onError={markLoaded}
-        >
-          {label}
-        </video>
-      ) : null}
-    </div>
-  );
-});
 
 function historyStorageKey(category: HistoryCategory, name: string): string {
   return `agnes:${category}-history-${name}`;
@@ -620,22 +494,27 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
                 <div className="history-result">
                   {category === 'video' && videoUrl ? (
                     <>
-                      <LazyHistoryVideo key={videoUrl} src={videoUrl} label={t('gallery.video.unsupported')} />
+                      <LazyVideo
+                        key={videoUrl}
+                        src={videoUrl}
+                        label={t('gallery.video.unsupported')}
+                        className="history-lazy-media"
+                        contentClassName="video-player"
+                      />
                       <div className="gallery-actions">
-                        <button
+                        <MediaPreviewTrigger
                           className="btn-secondary"
-                          type="button"
-                          onClick={() =>
-                            setPreviewMedia({
+                          onPreview={setPreviewMedia}
+                          media={{
                               kind: 'video',
                               src: videoUrl,
                               downloadHref: videoDownloadUrl(task.id),
+                              originalHref: videoUrl,
                               title: t(TYPE_LABEL_KEY[task.type]),
-                            })
-                          }
+                          }}
                         >
                           {t('preview.open')}
-                        </button>
+                        </MediaPreviewTrigger>
                         <BlobDownloadButton
                           href={videoDownloadUrl(task.id)}
                           fileName={downloadFileName(task, 'video')}
@@ -652,28 +531,26 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
                         const src = img.url || (img.b64 ? `data:image/png;base64,${img.b64}` : '');
                         return (
                           <div className="gallery-item" key={i}>
-                            <button
-                              className="media-preview-trigger"
-                              type="button"
-                              onClick={() =>
-                                setPreviewMedia({
+                            <MediaPreviewTrigger
+                              onPreview={setPreviewMedia}
+                              media={{
                                   kind: 'image',
                                   src,
                                   alt: `result-${i}`,
                                   downloadHref: downloadUrl(task.id, i),
+                                  originalHref: img.url || undefined,
                                   title: t(TYPE_LABEL_KEY[task.type]),
                                   meta: size,
-                                })
-                              }
-                              aria-label={t('preview.open')}
+                                }}
                             >
-                              <LazyHistoryImage
+                              <LazyImage
                                 key={src}
                                 src={src}
                                 alt={`result-${i}`}
                                 aspectRatio={aspectRatioFromSize(size)}
+                                className="history-lazy-media"
                               />
-                            </button>
+                            </MediaPreviewTrigger>
                             <div className="gallery-actions">
                               <BlobDownloadButton
                                 href={downloadUrl(task.id, i)}
