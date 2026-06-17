@@ -57,7 +57,16 @@ export function HistoryAdSlot({ category }: HistoryAdSlotProps) {
     );
   }
 
-  if (!enabled) return null;
+  if (!adsenseClient || !historyAdSlot) return null;
+
+  if (!enabled) {
+    return (
+      <section
+        className="history-ad-slot history-ad-slot-reserved"
+        aria-hidden="true"
+      />
+    );
+  }
 
   return (
     <section className="history-ad-slot" aria-label={t('ads.historyLabel')}>

@@ -136,7 +136,15 @@ export function MasonryGrid({
     <div
       ref={containerRef}
       className={`masonry-grid ${ready ? 'is-ready' : ''} ${className}`.trim()}
-      style={{ position: 'relative', height: ready ? height : undefined }}
+      style={
+        ready
+          ? { position: 'relative', height }
+          : {
+              display: 'grid',
+              gridTemplateColumns: `repeat(auto-fit, minmax(min(${minColumnWidth}px, 100%), 1fr))`,
+              gap,
+            }
+      }
     >
       {items.map((child, index) => {
         const offset = offsets[index];
@@ -149,7 +157,7 @@ export function MasonryGrid({
                 width: columnWidth,
                 transform: `translate3d(${offset.x}px, ${offset.y}px, 0)`,
               }
-            : { position: 'absolute', top: 0, left: 0, visibility: 'hidden' };
+            : { position: 'relative', width: '100%' };
         return (
           <div
             key={isValidElement(child) && child.key != null ? child.key : index}

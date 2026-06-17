@@ -824,6 +824,10 @@ main {
   background: color-mix(in oklab, var(--panel-2) 74%, transparent);
   overflow: hidden;
 }
+.history-ad-slot-reserved {
+  visibility: hidden;
+  pointer-events: none;
+}
 .history-ad-label {
   display: block;
   margin-bottom: 6px;
