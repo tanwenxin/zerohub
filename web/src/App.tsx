@@ -34,7 +34,6 @@ const NAV_ITEMS: { path: string; labelKey: TranslationKey; route: RouteKey }[] =
   { path: '/image', labelKey: 'nav.image', route: 'image' },
   { path: '/video', labelKey: 'nav.video', route: 'video' },
 ];
-const MARQUEE_ITEMS = Array.from({ length: 6 }, () => 'AGNES FRAME STUDIO · CALIBRATE · DEVELOP · REUSE ·');
 
 function normalizePath(pathname: string): string {
   return pathname.replace(/\/+$/, '') || '/';
@@ -238,18 +237,6 @@ export default function App() {
           </div>
         </div>
       </header>
-
-      <div className="marquee" aria-hidden="true">
-        <div className="marquee-track">
-          {[0, 1].map((segment) => (
-            <div className="marquee-segment" key={segment}>
-              {MARQUEE_ITEMS.map((item, index) => (
-                <span key={`${segment}-${index}`}>{item}</span>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
 
       <main>
         <Outlet />

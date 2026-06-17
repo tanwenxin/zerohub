@@ -318,42 +318,10 @@ textarea:focus-visible {
   box-shadow: 0 0 18px var(--warn);
 }
 
-/* 跑马灯 */
-.marquee {
-  overflow: hidden;
-  border-block: 1px solid var(--border-soft);
-  padding: var(--space-3) 0;
-  color: var(--meta);
-  font: 720 var(--text-xs) / 1 var(--font-mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  mask-image: linear-gradient(90deg, transparent, black 12%, black 88%, transparent);
-}
-.marquee-track {
-  display: flex;
-  width: max-content;
-  animation: marquee 44s linear infinite;
-  will-change: transform;
-}
-.marquee-segment {
-  display: flex;
-  gap: var(--space-4);
-  flex: 0 0 auto;
-  padding-right: var(--space-4);
-}
-.marquee-segment span {
-  flex: 0 0 auto;
-  white-space: nowrap;
-}
 @keyframes brand-pulse {
   50% {
     transform: scale(1.24);
     opacity: 0.62;
-  }
-}
-@keyframes marquee {
-  to {
-    transform: translateX(-50%);
   }
 }
 
@@ -2821,7 +2789,6 @@ input[type='number']:focus {
   .generate-submit-btn,
   .generate-submit-btn::after,
   .back-to-top,
-  .marquee-track,
   .media-preview-trigger img,
   .history-item,
   .layout-toggle button,
