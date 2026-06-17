@@ -56,16 +56,86 @@ export function PromptTemplateDetailPage() {
       .slice(0, 6);
   }, [template]);
 
+  const CATEGORY_KEYWORDS: Record<string, { zh: string; en: string }> = {
+    'portrait-fashion': {
+      zh: '人像 prompt, 时尚摄影, 情侣写真, 旅行人像, 时尚大片, 人像摄影风格',
+      en: 'portrait prompt, fashion photography, couple portrait, travel portrait, editorial portrait',
+    },
+    'poster-illustration': {
+      zh: '海报设计, 插画风格, 视觉叙事, 创意构图, AI 海报 prompt',
+      en: 'poster design, illustration style, visual storytelling, creative composition',
+    },
+    'character-anime': {
+      zh: '角色设计, 动漫风格, 游戏人物, 拟人化角色, AI 角色设定',
+      en: 'character design, anime style, game character, stylized persona',
+    },
+    'city-architecture': {
+      zh: '城市景观, 建筑空间, 室内设计, 建筑摄影, 空间氛围',
+      en: 'cityscape, architecture, interior design, architectural photography, spatial mood',
+    },
+    'product-ecommerce': {
+      zh: '产品摄影, 电商主图, 商业广告, 营销视觉, 商品图 AI',
+      en: 'product photography, ecommerce hero, commercial ads, marketing visuals',
+    },
+    'ui-social-media': {
+      zh: 'UI 画面, 社交媒体封面, 内容模板, 数字界面, 社媒配图',
+      en: 'UI screens, social media cover, content templates, digital interface',
+    },
+    'infographic-icons': {
+      zh: '信息图, 图标, 流程图, 规则说明, 结构化视觉',
+      en: 'infographics, icons, flowcharts, structured visuals',
+    },
+    'sports-action': {
+      zh: '体育运动, 动作瞬间, 赛事视觉, 动态场景, 运动摄影',
+      en: 'sports, action photography, event visuals, dynamic scenes',
+    },
+    'brand-logo': {
+      zh: '品牌识别, 标志视觉, 字体图形, 商业形象, AI logo',
+      en: 'brand identity, logo visuals, typography, commercial identity',
+    },
+    'food-beverage': {
+      zh: '美食摄影, 饮品广告, 餐饮场景, 食物质感, 美食 AI',
+      en: 'food photography, beverage ads, dining scene, food texture',
+    },
+    'nature-landscape': {
+      zh: '自然风景, 户外环境, 季节氛围, 旅行景观, 风景摄影',
+      en: 'nature landscape, outdoor, seasonal mood, travel scenery',
+    },
+    'retro-nostalgia': {
+      zh: '复古风格, 怀旧质感, 年代摄影, 旧物场景, vintage AI',
+      en: 'retro style, nostalgic texture, period photography, vintage',
+    },
+    'fantasy-scifi': {
+      zh: '幻想世界, 科幻场景, 未来视觉, 超现实概念, 赛博朋克',
+      en: 'fantasy world, sci-fi scene, futuristic visuals, surreal, cyberpunk',
+    },
+    'miniature-3d': {
+      zh: '微缩景观, 3D 装置, 模型摄影, 创意立体视觉, tilt shift',
+      en: 'miniature scene, 3D installation, model photography, tilt shift',
+    },
+    other: {
+      zh: '通用 AI prompt, 创意灵感, 图像生成参考',
+      en: 'general AI prompt, creative inspiration, image generation reference',
+    },
+  };
+
+  const categoryKeywords = category ? CATEGORY_KEYWORDS[category.slug] : undefined;
   if (!template || !category) return <Navigate to="/404" replace />;
   const currentTemplate = template;
 
   const canonicalPath = `/prompt-templates/${currentTemplate.categorySlug}/${currentTemplate.slug}`;
   const canonicalUrl = `${SITE_URL}${canonicalPath}`;
-  const title = `${currentTemplate.title} - AI Prompt | Agnes`;
+  const localizedCategoryName = categoryName(currentTemplate.categorySlug, currentTemplate.category, language);
+  const titleBase = en
+    ? `${currentTemplate.title} - ${localizedCategoryName} Image Prompt | Agnes`
+    : `${currentTemplate.title} - ${localizedCategoryName}提示词 | Agnes`;
   const description = compactText(currentTemplate.prompt);
+  const categoryKeywordText = categoryKeywords ? (en ? categoryKeywords.en : categoryKeywords.zh) : '';
+  const keywords = en
+    ? `${currentTemplate.title}, ${localizedCategoryName} prompt, AI image prompt, image generation prompt, ${categoryKeywordText}, Agnes Frame Studio`
+    : `${currentTemplate.title}, ${localizedCategoryName}提示词, AI prompt, AI 图片提示词, ${categoryKeywordText}, Agnes 显影室`;
   const targetLanguage = detectPromptLanguage(currentTemplate.prompt) === 'zh' ? 'en' : 'zh';
   const translateLabel = targetLanguage === 'zh' ? (en ? 'Translate to Chinese' : '翻译成中文') : (en ? 'Translate to English' : '翻译成英文');
-  const localizedCategoryName = categoryName(currentTemplate.categorySlug, currentTemplate.category, language);
   const imageSources = promptTemplateImageSources(currentTemplate, 'detail');
   const pictureSources = [
     imageSources.avifSrcSet ? { type: 'image/avif', srcSet: imageSources.avifSrcSet } : null,
@@ -78,8 +148,10 @@ export function PromptTemplateDetailPage() {
     description,
     url: canonicalUrl,
     genre: localizedCategoryName,
+    keywords,
     text: currentTemplate.prompt,
     image: currentTemplate.imageUrl || undefined,
+    inLanguage: en ? 'en' : 'zh-CN',
   };
   const breadcrumbData = {
     '@context': 'https://schema.org',
@@ -88,7 +160,7 @@ export function PromptTemplateDetailPage() {
       {
         '@type': 'ListItem',
         position: 1,
-        name: 'Prompts',
+        name: en ? 'Prompt Library' : '提示词库',
         item: `${SITE_URL}/prompt-templates`,
       },
       {
@@ -176,26 +248,22 @@ export function PromptTemplateDetailPage() {
   return (
     <article className="prompt-template-detail">
       <Head>
-        <title>{title}</title>
+        <title>{titleBase}</title>
         <meta name="description" content={description} />
-        <meta
-          name="keywords"
-          content={
-            en
-              ? `${currentTemplate.title}, ${localizedCategoryName}, AI prompt, image generation prompt`
-              : `${currentTemplate.title}, ${localizedCategoryName}, AI prompt, AI 图片提示词`
-          }
-        />
-        <meta name="robots" content="index,follow" />
+        <meta name="keywords" content={keywords} />
+        <meta name="robots" content="index,follow,max-image-preview:large" />
         <link rel="canonical" href={canonicalUrl} />
         <meta property="og:type" content="article" />
-        <meta property="og:title" content={title} />
+        <meta property="og:site_name" content={en ? 'Agnes Frame Studio' : 'Agnes 显影室'} />
+        <meta property="og:title" content={titleBase} />
         <meta property="og:description" content={description} />
         <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:locale" content={en ? 'en_US' : 'zh_CN'} />
         {currentTemplate.imageUrl ? <meta property="og:image" content={currentTemplate.imageUrl} /> : null}
         <meta name="twitter:card" content={currentTemplate.imageUrl ? 'summary_large_image' : 'summary'} />
-        <meta name="twitter:title" content={title} />
+        <meta name="twitter:title" content={titleBase} />
         <meta name="twitter:description" content={description} />
+        {currentTemplate.imageUrl ? <meta name="twitter:image" content={currentTemplate.imageUrl} /> : null}
         <script type="application/ld+json">{JSON.stringify(structuredData)}</script>
         <script type="application/ld+json">{JSON.stringify(breadcrumbData)}</script>
       </Head>

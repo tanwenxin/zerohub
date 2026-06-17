@@ -47,6 +47,8 @@ interface LazyImageSource {
   srcSet: string;
 }
 
+const DEFAULT_IMAGE_ASPECT_RATIO = '4 / 3';
+
 interface LazyImageProps {
   src: string;
   alt: string;
@@ -65,6 +67,28 @@ interface LazyImageProps {
   fetchPriority?: 'high' | 'low' | 'auto';
   placeholder?: ReactNode;
   onError?: () => void;
+}
+
+function resolveAspectRatio(
+  aspectRatio: string | undefined,
+  width: number | undefined,
+  height: number | undefined,
+): string {
+  if (aspectRatio) return aspectRatio;
+  if (typeof width === 'number' && width > 0 && typeof height === 'number' && height > 0) {
+    return `${width} / ${height}`;
+  }
+  return DEFAULT_IMAGE_ASPECT_RATIO;
+}
+
+function resolveIntrinsicSize(
+  width: number | undefined,
+  height: number | undefined,
+): { width: number; height: number } {
+  if (typeof width === 'number' && typeof height === 'number' && width > 0 && height > 0) {
+    return { width, height };
+  }
+  return { width: 800, height: 600 };
 }
 
 export const LazyImage = memo(function LazyImage({
@@ -88,9 +112,15 @@ export const LazyImage = memo(function LazyImage({
 }: LazyImageProps) {
   const { ref, shouldLoad } = useLazyMedia<HTMLSpanElement>(src, rootMargin);
   const [loaded, setLoaded] = useState(() => loadedCache.has(src));
-  const style = useMemo<CSSProperties | undefined>(() => (
-    aspectRatio ? { aspectRatio } : undefined
-  ), [aspectRatio]);
+  const resolvedAspectRatio = useMemo(
+    () => resolveAspectRatio(aspectRatio, width, height),
+    [aspectRatio, width, height],
+  );
+  const intrinsic = useMemo(() => resolveIntrinsicSize(width, height), [width, height]);
+  const style = useMemo<CSSProperties>(
+    () => ({ aspectRatio: resolvedAspectRatio }),
+    [resolvedAspectRatio],
+  );
 
   function markLoaded() {
     requestedCache.add(src);
@@ -104,8 +134,8 @@ export const LazyImage = memo(function LazyImage({
       src={src}
       srcSet={srcSet}
       sizes={sizes}
-      width={width}
-      height={height}
+      width={intrinsic.width}
+      height={intrinsic.height}
       alt={alt}
       loading={loading}
       decoding={decoding}
@@ -185,6 +215,8 @@ export const LazyVideo = memo(function LazyVideo({
           autoPlay={autoPlay}
           playsInline
           preload={preload}
+          width={1280}
+          height={720}
           onLoadedMetadata={markLoaded}
           onCanPlay={markLoaded}
           onError={markLoaded}

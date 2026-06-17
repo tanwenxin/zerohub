@@ -54,6 +54,8 @@ export function MasonryGrid({
 
   // 核心测量：设定每个 item 的列宽（高度依赖宽度，必须先定宽再测高），
   // 再把它放入当前最矮的列，记录 x/y 偏移与容器总高度。
+  // 首次渲染时在容器尺寸固定后再测量，避免从 "预占位" 切换到 "真实布局"
+  // 时产生肉眼可见的跳动。
   const measure = useCallback(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -136,15 +138,10 @@ export function MasonryGrid({
     <div
       ref={containerRef}
       className={`masonry-grid ${ready ? 'is-ready' : ''} ${className}`.trim()}
-      style={
-        ready
-          ? { position: 'relative', height }
-          : {
-              display: 'grid',
-              gridTemplateColumns: `repeat(auto-fit, minmax(min(${minColumnWidth}px, 100%), 1fr))`,
-              gap,
-            }
-      }
+      style={{
+        position: 'relative',
+        height: ready ? height : 0,
+      }}
     >
       {items.map((child, index) => {
         const offset = offsets[index];
@@ -157,7 +154,15 @@ export function MasonryGrid({
                 width: columnWidth,
                 transform: `translate3d(${offset.x}px, ${offset.y}px, 0)`,
               }
-            : { position: 'relative', width: '100%' };
+            : {
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                opacity: 0,
+                visibility: 'hidden',
+                pointerEvents: 'none',
+              };
         return (
           <div
             key={isValidElement(child) && child.key != null ? child.key : index}

@@ -91,7 +91,7 @@ export function Uploader({
         <div className="asset-grid">
           {filePreviews.map(({ file, src }, i) => (
             <div className="asset is-filled" key={`f-${i}`}>
-              <img className="asset-thumb" src={src} alt={file.name} />
+              <img className="asset-thumb" src={src} alt={file.name} width={400} height={400} />
               <button
                 type="button"
                 className="asset-remove"
@@ -110,6 +110,8 @@ export function Uploader({
                 className="asset-thumb"
                 src={u}
                 alt={`url-${i}`}
+                width={400}
+                height={400}
                 onError={(e) => (e.currentTarget.style.opacity = '0.3')}
               />
               <button
@@ -210,7 +212,7 @@ export function Uploader({
                 });
               }}
             >
-              <img src={src} alt={file.name} />
+              <img src={src} alt={file.name} width={320} height={320} />
             </button>
             <button
               type="button"
@@ -239,7 +241,7 @@ export function Uploader({
                 });
               }}
             >
-              <img src={u} alt={`url-${i}`} onError={(e) => (e.currentTarget.style.opacity = '0.3')} />
+              <img src={u} alt={`url-${i}`} width={320} height={320} onError={(e) => (e.currentTarget.style.opacity = '0.3')} />
             </button>
             <button
               type="button"

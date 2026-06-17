@@ -80,26 +80,90 @@ export default function App() {
   const [nonCriticalReady, setNonCriticalReady] = useState(false);
 
   const meta = useMemo(() => {
-    const byRoute: Record<RouteKey, { titleKey: TranslationKey; descriptionKey: TranslationKey }> = {
-      home: { titleKey: 'meta.home.title', descriptionKey: 'meta.home.description' },
-      image: { titleKey: 'meta.image.title', descriptionKey: 'meta.image.description' },
-      video: { titleKey: 'meta.video.title', descriptionKey: 'meta.video.description' },
-      guides: { titleKey: 'meta.guides.title', descriptionKey: 'meta.guides.description' },
-      promptTemplates: { titleKey: 'meta.promptTemplates.title', descriptionKey: 'meta.promptTemplates.description' },
-      about: { titleKey: 'meta.about.title', descriptionKey: 'meta.about.description' },
-      privacy: { titleKey: 'meta.privacy.title', descriptionKey: 'meta.privacy.description' },
-      terms: { titleKey: 'meta.terms.title', descriptionKey: 'meta.terms.description' },
-      contact: { titleKey: 'meta.contact.title', descriptionKey: 'meta.contact.description' },
-      notFound: { titleKey: 'meta.notFound.title', descriptionKey: 'meta.notFound.description' },
+    const byRoute: Record<
+      RouteKey,
+      { titleKey: TranslationKey; descriptionKey: TranslationKey; keywordsZh: string; keywordsEn: string }
+    > = {
+      home: {
+        titleKey: 'meta.home.title',
+        descriptionKey: 'meta.home.description',
+        keywordsZh:
+          'AI 图片生成, AI 视频生成, AI 绘画, AI image generator, AI video generator, 文生图, 图生图, 文生视频, 多图合成, 关键帧动画, AI prompt, 提示词库, Agnes 显影室',
+        keywordsEn:
+          'AI image generator, AI video generator, text-to-image, image-to-image, text-to-video, image-to-video, keyframe animation, AI prompts, free AI image, Agnes Frame Studio',
+      },
+      image: {
+        titleKey: 'meta.image.title',
+        descriptionKey: 'meta.image.description',
+        keywordsZh:
+          'AI 图片生成, 文生图, 图生图, 多图合成, AI 绘画, 产品主图, 广告海报, 提示词优化, 图片理解, image to image, multi image composition',
+        keywordsEn:
+          'AI image generator, text to image, image to image, multi image composition, product photography, poster design, prompt optimizer, image understanding',
+      },
+      video: {
+        titleKey: 'meta.video.title',
+        descriptionKey: 'meta.video.description',
+        keywordsZh:
+          'AI 视频生成, 文生视频, 图生视频, 多图视频, 关键帧动画, AI 短视频, 广告分镜, 社媒动态, text to video, image to video',
+        keywordsEn:
+          'AI video generator, text to video, image to video, multi image video, keyframe animation, short video AI, ad storyboard, social motion',
+      },
+      guides: {
+        titleKey: 'meta.guides.title',
+        descriptionKey: 'meta.guides.description',
+        keywordsZh:
+          'AI 提示词写法, AI 图片商业使用, 安全创作指南, prompt 指南, 生成式 AI 合规',
+        keywordsEn:
+          'AI prompt guide, commercial use of generative AI, AI safety guidelines, prompt writing tips',
+      },
+      promptTemplates: {
+        titleKey: 'meta.promptTemplates.title',
+        descriptionKey: 'meta.promptTemplates.description',
+        keywordsZh:
+          'AI 提示词库, AI prompt, 图片提示词, 人像 prompt, 产品摄影 prompt, 海报设计, 角色设计, 美食摄影, 建筑空间, 复古风格, 科幻场景',
+        keywordsEn:
+          'AI prompt library, image generation prompts, portrait prompts, product photography prompts, poster design, character design, food photography, architecture prompts',
+      },
+      about: {
+        titleKey: 'meta.about.title',
+        descriptionKey: 'meta.about.description',
+        keywordsZh: '关于 Agnes 显影室, AI 创作工作台, 自托管图片视频生成',
+        keywordsEn: 'About Agnes Frame Studio, self-hosted AI image and video workspace',
+      },
+      privacy: {
+        titleKey: 'meta.privacy.title',
+        descriptionKey: 'meta.privacy.description',
+        keywordsZh: '隐私政策, Agnes 显影室, 数据处理, prompt 存储, 生成历史',
+        keywordsEn: 'Privacy policy, Agnes Frame Studio, data handling, prompt storage, generation history',
+      },
+      terms: {
+        titleKey: 'meta.terms.title',
+        descriptionKey: 'meta.terms.description',
+        keywordsZh: '服务条款, 使用规则, AI 输出免责, Agnes 显影室',
+        keywordsEn: 'Terms of service, acceptable use, AI output disclaimer, Agnes Frame Studio',
+      },
+      contact: {
+        titleKey: 'meta.contact.title',
+        descriptionKey: 'meta.contact.description',
+        keywordsZh: '联系 Agnes 显影室, 支持邮箱, 反馈与建议',
+        keywordsEn: 'Contact Agnes Frame Studio, support email, feedback',
+      },
+      notFound: {
+        titleKey: 'meta.notFound.title',
+        descriptionKey: 'meta.notFound.description',
+        keywordsZh: '',
+        keywordsEn: '',
+      },
     };
     const selected = byRoute[route];
+    const keywordsList = (language === 'en' ? selected.keywordsEn : selected.keywordsZh).trim();
     return {
       title: t(selected.titleKey),
       description: t(selected.descriptionKey),
-      keywords: '',
-      robots: route === 'notFound' && !isSeoLandingRoute ? 'noindex,follow' : 'index,follow',
+      keywords: keywordsList,
+      robots: route === 'notFound' && !isSeoLandingRoute ? 'noindex,follow' : 'index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1',
     };
-  }, [isSeoLandingRoute, route, t]);
+  }, [isSeoLandingRoute, language, route, t]);
 
   const canonicalPath = normalizePath(location.pathname);
   const canonicalUrl = `${SITE_URL}${canonicalPath === '/' ? '/' : canonicalPath}`;
@@ -109,12 +173,32 @@ export default function App() {
       '@context': 'https://schema.org',
       '@type': 'WebApplication',
       name: t('app.brand'),
+      alternateName: language === 'en' ? 'Agnes Frame Studio' : 'Agnes 显影室',
       applicationCategory: 'MultimediaApplication',
       operatingSystem: 'Web',
       url: canonicalUrl,
       description: meta.description,
+      keywords: meta.keywords,
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+      },
+      inLanguage: language === 'en' ? 'en' : 'zh-CN',
     };
-  }, [canonicalUrl, isSeoLandingRoute, meta.description, t]);
+  }, [canonicalUrl, isSeoLandingRoute, language, meta.description, meta.keywords, t]);
+
+  const organizationData = useMemo(() => {
+    if (isSeoLandingRoute) return null;
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: t('app.brand'),
+      alternateName: language === 'en' ? 'Agnes Frame Studio' : 'Agnes 显影室',
+      url: SITE_URL,
+      sameAs: [SITE_URL],
+    };
+  }, [isSeoLandingRoute, language, t]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
@@ -171,16 +255,21 @@ export default function App() {
         <meta name="description" content={meta.description} />
         {meta.keywords ? <meta name="keywords" content={meta.keywords} /> : null}
         <meta name="robots" content={meta.robots} />
-        <link rel="canonical" href={canonicalUrl} />
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content={t('app.brand')} />
         <meta property="og:title" content={meta.title} />
         <meta property="og:description" content={meta.description} />
         <meta property="og:url" content={canonicalUrl} />
-        <meta name="twitter:card" content="summary" />
+        <meta property="og:locale" content={language === 'en' ? 'en_US' : 'zh_CN'} />
+        <link rel="canonical" href={canonicalUrl} />
+        <link rel="alternate" hrefLang="zh-CN" href={`${SITE_URL}${canonicalPath === '/' ? '/' : canonicalPath}`} />
+        <link rel="alternate" hrefLang="en" href={`${SITE_URL}${canonicalPath === '/' ? '/' : canonicalPath}`} />
+        <link rel="alternate" hrefLang="x-default" href={`${SITE_URL}${canonicalPath === '/' ? '/' : canonicalPath}`} />
+        <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:title" content={meta.title} />
         <meta name="twitter:description" content={meta.description} />
         {structuredData ? <script type="application/ld+json">{JSON.stringify(structuredData)}</script> : null}
+        {organizationData ? <script type="application/ld+json">{JSON.stringify(organizationData)}</script> : null}
       </Head>
       <header className="topbar">
         <div className="ui-container topbar-inner">

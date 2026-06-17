@@ -103,6 +103,11 @@ ${[...routes, ...promptTemplateRoutes()]
 
 const robots = `User-agent: *
 Allow: /
+Disallow: /design-system
+
+User-agent: Googlebot
+Allow: /
+Disallow: /design-system
 
 Sitemap: ${absoluteUrl('/sitemap.xml')}
 `;

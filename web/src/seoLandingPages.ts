@@ -47,7 +47,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     toolPath: '/image',
     priority: '0.86',
     changefreq: 'weekly',
-    keywords: ['AI 图片生成器', 'AI image generator', '文生图', '图生图', '多图合成'],
+    keywords: ['AI 图片生成器', 'AI image generator', '文生图', '图生图', '多图合成', 'AI 绘画', '免费 AI 图片生成', 'text to image', 'image to image AI', 'commercial image generator'],
     content: {
       zh: {
         title: 'AI 图片生成器 - 文生图、图生图与多图合成 | Agnes 显影室',
@@ -125,7 +125,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     toolPath: '/image',
     priority: '0.82',
     changefreq: 'weekly',
-    keywords: ['文生图', 'text to image', 'AI 绘画', 'prompt 生成图片'],
+    keywords: ['文生图', 'text to image', 'AI 绘画', 'prompt 生成图片', 'AI 文生图工具', '中文 prompt', 'commercial text-to-image'],
     content: {
       zh: {
         title: '文生图工具 - 用 Prompt 生成 AI 图片 | Agnes 显影室',
@@ -173,7 +173,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     toolPath: '/image',
     priority: '0.82',
     changefreq: 'weekly',
-    keywords: ['图生图', 'image to image', 'AI 风格转换', '参考图生成'],
+    keywords: ['图生图', 'image to image', 'AI 风格转换', '参考图生成', 'img2img', 'AI 风格迁移', '参考图 AI'],
     content: {
       zh: {
         title: '图生图 AI 工具 - 上传参考图重塑风格与场景 | Agnes 显影室',
@@ -221,7 +221,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     toolPath: '/image',
     priority: '0.8',
     changefreq: 'weekly',
-    keywords: ['多图合成 AI', 'multi image composition', '多张图片合成', 'AI 合成图片'],
+    keywords: ['多图合成 AI', 'multi image composition', '多张图片合成', 'AI 合成图片', '素材融合', 'image blending AI'],
     content: {
       zh: {
         title: '多图合成 AI - 将多张素材合成一张图片 | Agnes 显影室',
@@ -269,7 +269,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     toolPath: '/video',
     priority: '0.86',
     changefreq: 'weekly',
-    keywords: ['AI 视频生成器', 'AI video generator', '文生视频', '图生视频', '关键帧动画'],
+    keywords: ['AI 视频生成器', 'AI video generator', '文生视频', '图生视频', '关键帧动画', 'AI 短视频', 'text to video', 'image to video', 'social video AI'],
     content: {
       zh: {
         title: 'AI 视频生成器 - 文生视频、图生视频与关键帧动画 | Agnes 显影室',
@@ -317,7 +317,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     toolPath: '/video',
     priority: '0.82',
     changefreq: 'weekly',
-    keywords: ['图生视频', '图片转视频 AI', 'image to video AI', 'AI 动态化'],
+    keywords: ['图生视频', '图片转视频 AI', 'image to video AI', 'AI 动态化', '图片转短视频', 'img2video'],
     content: {
       zh: {
         title: '图生视频 AI - 图片转短视频工具 | Agnes 显影室',
@@ -365,7 +365,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     toolPath: '/video',
     priority: '0.78',
     changefreq: 'weekly',
-    keywords: ['关键帧动画 AI', 'keyframe animation AI', '多图视频', 'AI 动画生成'],
+    keywords: ['关键帧动画 AI', 'keyframe animation AI', '多图视频', 'AI 动画生成', '分镜动画', 'multi-image video'],
     content: {
       zh: {
         title: '关键帧动画 AI - 用多张关键帧生成短视频 | Agnes 显影室',
@@ -413,7 +413,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     toolPath: '/image',
     priority: '0.74',
     changefreq: 'monthly',
-    keywords: ['AI prompt 优化', 'prompt optimizer', '提示词优化', 'AI 提示词'],
+    keywords: ['AI prompt 优化', 'prompt optimizer', '提示词优化', 'AI 提示词', 'prompt 润色', 'prompt engineering'],
     content: {
       zh: {
         title: 'AI Prompt 优化工具 - 补齐图片与视频生成提示词 | Agnes 显影室',
@@ -461,7 +461,7 @@ export const SEO_LANDING_PAGES: SeoLandingPage[] = [
     toolPath: '/image',
     priority: '0.72',
     changefreq: 'monthly',
-    keywords: ['图片生成提示词', 'image to prompt', '图片理解', '反推 prompt'],
+    keywords: ['图片生成提示词', 'image to prompt', '图片理解', '反推 prompt', 'AI 图像分析', 'reverse prompt engineering'],
     content: {
       zh: {
         title: '图片生成 Prompt - 根据参考图生成提示词 | Agnes 显影室',
