@@ -108,7 +108,19 @@ function setStaticCacheHeaders(res, filePath) {
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     return;
   }
-  if (filePath.endsWith('.html')) {
+  if (filePath.includes(`${path.sep}prompt-template-images${path.sep}`)) {
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    return;
+  }
+  if (/\.(?:avif|webp|png|jpe?g|gif|svg|ico|woff2?|ttf|otf)$/i.test(filePath)) {
+    res.setHeader('Cache-Control', 'public, max-age=2592000, stale-while-revalidate=86400');
+    return;
+  }
+  if (/\.(?:json|xml|txt)$/i.test(filePath)) {
+    res.setHeader('Cache-Control', 'public, max-age=86400, stale-while-revalidate=604800');
+    return;
+  }
+  if (filePath.endsWith('.html') || !path.extname(filePath)) {
     res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
     return;
   }

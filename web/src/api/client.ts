@@ -461,6 +461,7 @@ export interface PromptTemplate {
   rawCategory: string;
   sourceLine: number | null;
   imageUrl: string | null;
+  imageOptimized: Record<string, Record<string, string>> | null;
   imageStatus: string;
   imageGeneratedAt: string | null;
 }

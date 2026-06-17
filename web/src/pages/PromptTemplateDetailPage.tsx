@@ -10,6 +10,7 @@ import {
 } from '../data/promptTemplates.generated';
 import { categoryName, rawCategoryName } from '../data/promptTemplateLabels';
 import { saveImageDraft } from '../utils/draftStorage';
+import { promptTemplateImageSources } from '../utils/promptTemplateImages';
 import { DEFAULT_IMAGE_SIZE } from '../utils/sizePreference';
 import { useTaskQueue } from '../useTaskQueue';
 import { usePreferences } from '../usePreferences';
@@ -61,6 +62,7 @@ export function PromptTemplateDetailPage() {
   const targetLanguage = detectPromptLanguage(currentTemplate.prompt) === 'zh' ? 'en' : 'zh';
   const translateLabel = targetLanguage === 'zh' ? (en ? 'Translate to Chinese' : '翻译成中文') : (en ? 'Translate to English' : '翻译成英文');
   const localizedCategoryName = categoryName(currentTemplate.categorySlug, currentTemplate.category, language);
+  const imageSources = promptTemplateImageSources(currentTemplate, 'detail');
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'CreativeWork',
@@ -218,8 +220,25 @@ export function PromptTemplateDetailPage() {
             </div>
           </div>
           <Card className="prompt-template-detail-media" as="figure">
-            {currentTemplate.imageUrl ? (
-              <img src={currentTemplate.imageUrl} alt={currentTemplate.title} decoding="async" fetchPriority="high" />
+            {imageSources.fallbackSrc ? (
+              <picture>
+                {imageSources.avifSrcSet ? (
+                  <source type="image/avif" srcSet={imageSources.avifSrcSet} sizes={imageSources.sizes} />
+                ) : null}
+                {imageSources.webpSrcSet ? (
+                  <source type="image/webp" srcSet={imageSources.webpSrcSet} sizes={imageSources.sizes} />
+                ) : null}
+                <img
+                  src={imageSources.fallbackSrc}
+                  srcSet={imageSources.fallbackSrcSet}
+                  sizes={imageSources.sizes}
+                  width={960}
+                  height={720}
+                  alt={currentTemplate.title}
+                  decoding="async"
+                  fetchPriority="high"
+                />
+              </picture>
             ) : (
               <span>{en ? 'IMAGE PENDING' : '图片待生成'}</span>
             )}

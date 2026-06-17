@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Head } from 'vite-react-ssg';
 import { listPromptTemplates, type PromptTemplatePagination as Pagination } from '../api/client';
@@ -84,6 +84,8 @@ function PromptTemplatesListing({ categorySlug }: { categorySlug?: string }) {
   const [searchValue, setSearchValue] = useState(query);
   const [state, setState] = useState<ListingState>(() => staticList(categorySlug, page, pageSize, query));
   const [error, setError] = useState<string | null>(null);
+  const resultsRef = useRef<HTMLDivElement | null>(null);
+  const shouldScrollToResultsRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -121,6 +123,20 @@ function PromptTemplatesListing({ categorySlug }: { categorySlug?: string }) {
     event.preventDefault();
     updateQuery({ q: searchValue.trim() || null, page: 1 });
   }
+
+  function changePage(nextPage: number) {
+    if (nextPage === page) return;
+    shouldScrollToResultsRef.current = true;
+    updateQuery({ page: nextPage });
+  }
+
+  useEffect(() => {
+    if (!shouldScrollToResultsRef.current || state.pagination.page !== page) return;
+    shouldScrollToResultsRef.current = false;
+    window.requestAnimationFrame(() => {
+      resultsRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    });
+  }, [page, state.pagination.page, state.items.length]);
 
   const title = category
     ? en
@@ -211,7 +227,7 @@ function PromptTemplatesListing({ categorySlug }: { categorySlug?: string }) {
 
       <Section>
         <Container>
-          <div className="prompt-template-results-head">
+          <div ref={resultsRef} className="prompt-template-results-head">
             <div>
               <Badge>{en ? `${state.pagination.total} total` : `共 ${state.pagination.total} 条`}</Badge>
               {error ? <span className="prompt-template-error">{error}</span> : null}
@@ -222,8 +238,8 @@ function PromptTemplatesListing({ categorySlug }: { categorySlug?: string }) {
           </div>
           {state.items.length ? (
             <div className="prompt-template-grid">
-              {state.items.map((template, index) => (
-                <PromptTemplateCard key={template.id} template={template} priority={index < 2 && page === 1} />
+              {state.items.map((template) => (
+                <PromptTemplateCard key={template.id} template={template} />
               ))}
             </div>
           ) : (
@@ -234,7 +250,7 @@ function PromptTemplatesListing({ categorySlug }: { categorySlug?: string }) {
           )}
           <PromptTemplatePagination
             pagination={state.pagination}
-            onPageChange={(nextPage) => updateQuery({ page: nextPage })}
+            onPageChange={changePage}
           />
         </Container>
       </Section>

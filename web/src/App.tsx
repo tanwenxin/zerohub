@@ -231,8 +231,9 @@ export default function App() {
             <span
               className={`status-dot ${apiReady ? 'ok' : 'warn'}`}
               title={healthLabel}
-              aria-label={healthLabel}
+              aria-hidden="true"
             />
+            <span className="sr-only">{healthLabel}</span>
           </div>
         </div>
       </header>

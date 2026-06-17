@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Uploader } from '../components/Uploader';
-import { TaskHistory } from '../components/TaskHistory';
 import { SubmitFeedback } from '../components/SubmitFeedback';
 import { PromptOptimizeButton } from '../components/PromptOptimizeButton';
 import { PromptCompleteness } from '../components/PromptCompleteness';
@@ -8,6 +7,9 @@ import { ImageUnderstandPanel } from '../components/ImageUnderstandPanel';
 import { Eyebrow, SegmentedControl } from '../components/ui';
 import { useTaskQueue } from '../useTaskQueue';
 import {
+  DEFAULT_VIDEO_FRAME_RATE,
+  DEFAULT_VIDEO_FRAMES,
+  DEFAULT_VIDEO_MODE,
   DEFAULT_VIDEO_SIZE,
   clearVideoSizePreference,
   getDefaultVideoNegativePrompt,
@@ -38,6 +40,11 @@ import { usePreferences } from '../usePreferences';
 import type { TranslationKey } from '../i18n';
 
 const VIDEO_MODES: VideoTaskType[] = ['text2vid', 'img2vid', 'multivid', 'keyframes'];
+const HISTORY_BOOT_DELAY_MS = 900;
+
+const TaskHistory = lazy(() =>
+  import('../components/TaskHistory').then((module) => ({ default: module.TaskHistory }))
+);
 
 const MODES: { value: VideoTaskType; labelKey: TranslationKey }[] = [
   { value: 'text2vid', labelKey: 'video.mode.text2vid' },
@@ -65,30 +72,23 @@ function readInitialVideoNegativePrompt(defaultValue: string): string {
 export function VideoGenerate() {
   const { language, t } = usePreferences();
   const defaultNegativePrompt = getDefaultVideoNegativePrompt(language);
-  const [mode, setMode] = useState<VideoTaskType>(() => {
-    const d = readVideoDraft();
-    return d && VIDEO_MODES.includes(d.mode) ? d.mode : readVideoModePreference();
-  });
-  const [prompt, setPrompt] = useState(() => readVideoDraft()?.prompt ?? '');
-  const [negativePrompt, setNegativePrompt] = useState(
-    () => readInitialVideoNegativePrompt(defaultNegativePrompt)
-  );
-  const [frames, setFrames] = useState(() => readVideoDraft()?.frames ?? readVideoFramesPreference());
-  const [frameRate, setFrameRate] = useState(
-    () => readVideoDraft()?.frameRate ?? readVideoFrameRatePreference()
-  );
-  const [sizeStr, setSizeStr] = useState(() => {
-    const draftSize = readVideoDraft()?.size || null;
-    return isGenerationSizeValue(draftSize) ? draftSize : readVideoSizePreference();
-  });
-  const [seed, setSeed] = useState(() => readVideoDraft()?.seed ?? readVideoSeedPreference());
-  const [files, setFiles] = useState<File[]>(() => readVideoDraftFiles());
-  const [urls, setUrls] = useState<string[]>(() => readVideoDraft()?.urls ?? []);
+  const [mode, setMode] = useState<VideoTaskType>(DEFAULT_VIDEO_MODE);
+  const [prompt, setPrompt] = useState('');
+  const [negativePrompt, setNegativePrompt] = useState(defaultNegativePrompt);
+  const [frames, setFrames] = useState(DEFAULT_VIDEO_FRAMES);
+  const [frameRate, setFrameRate] = useState(DEFAULT_VIDEO_FRAME_RATE);
+  const [sizeStr, setSizeStr] = useState(DEFAULT_VIDEO_SIZE);
+  const [seed, setSeed] = useState('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [urls, setUrls] = useState<string[]>([]);
   const [submitFeedback, setSubmitFeedback] = useState<'idle' | 'accepted'>('idle');
   const [hiddenSubmitFailureId, setHiddenSubmitFailureId] = useState<string | null>(null);
   const [promptAssessKey, setPromptAssessKey] = useState(0);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [historyReady, setHistoryReady] = useState(false);
   const feedbackTimerRef = useRef<number | null>(null);
   const promptDirtyRef = useRef(false);
+  const draftLoadedRef = useRef(false);
 
   const {
     submitVideo,
@@ -105,23 +105,55 @@ export function VideoGenerate() {
     };
   }, []);
 
+  useEffect(() => {
+    if (draftLoadedRef.current) return;
+    draftLoadedRef.current = true;
+    const timerId = globalThis.setTimeout(() => {
+      const draft = readVideoDraft();
+      setMode(draft && VIDEO_MODES.includes(draft.mode) ? draft.mode : readVideoModePreference());
+      setPrompt(draft?.prompt || '');
+      setNegativePrompt(readInitialVideoNegativePrompt(defaultNegativePrompt));
+      setFrames(draft?.frames ?? readVideoFramesPreference());
+      setFrameRate(draft?.frameRate ?? readVideoFrameRatePreference());
+      setSizeStr(isGenerationSizeValue(draft?.size || null) ? draft!.size : readVideoSizePreference());
+      setSeed(draft?.seed ?? readVideoSeedPreference());
+      setUrls(Array.isArray(draft?.urls) ? draft.urls : []);
+      setFiles(readVideoDraftFiles());
+      setDraftRestored(true);
+    }, 0);
+    return () => globalThis.clearTimeout(timerId);
+  }, [defaultNegativePrompt]);
+
+  useEffect(() => {
+    const run = () => setHistoryReady(true);
+    if ('requestIdleCallback' in window) {
+      const idleId = window.requestIdleCallback(run, { timeout: HISTORY_BOOT_DELAY_MS });
+      return () => window.cancelIdleCallback(idleId);
+    }
+    const timerId = globalThis.setTimeout(run, HISTORY_BOOT_DELAY_MS);
+    return () => globalThis.clearTimeout(timerId);
+  }, []);
+
   // 草稿自动保存：文本/参数同步；上传图片单独序列化（含 base64）
   useEffect(() => {
+    if (!draftRestored) return;
     saveVideoDraft({ mode, prompt, negativePrompt, frames, frameRate, size: sizeStr, seed, urls });
-  }, [mode, prompt, negativePrompt, frames, frameRate, sizeStr, seed, urls]);
+  }, [draftRestored, mode, prompt, negativePrompt, frames, frameRate, sizeStr, seed, urls]);
 
   useEffect(() => {
+    if (!draftRestored) return;
     void saveVideoDraftFiles(files);
-  }, [files]);
+  }, [draftRestored, files]);
 
   useEffect(() => {
+    if (!draftRestored) return;
     const id = window.setTimeout(() => {
       setNegativePrompt((prev) => (
         isDefaultVideoNegativePrompt(prev) ? defaultNegativePrompt : prev
       ));
     }, 0);
     return () => window.clearTimeout(id);
-  }, [defaultNegativePrompt]);
+  }, [defaultNegativePrompt, draftRestored]);
 
   const needsImage = mode !== 'text2vid';
   const minImages = mode === 'multivid' || mode === 'keyframes' ? 2 : 1;
@@ -423,12 +455,18 @@ export function VideoGenerate() {
 
       <div className="panel output">
         <h3 className="history-title">{t('task.historyTitle')}</h3>
-        <TaskHistory
-          category="video"
-          currentPrompt={prompt}
-          onPromptFill={setPrompt}
-          onFill={onHistoryFill}
-        />
+        {historyReady ? (
+          <Suspense fallback={<div className="history-deferred-placeholder" aria-hidden="true" />}>
+            <TaskHistory
+              category="video"
+              currentPrompt={prompt}
+              onPromptFill={setPrompt}
+              onFill={onHistoryFill}
+            />
+          </Suspense>
+        ) : (
+          <div className="history-deferred-placeholder" aria-hidden="true" />
+        )}
       </div>
     </div>
   );

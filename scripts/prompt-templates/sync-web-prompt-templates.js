@@ -42,6 +42,7 @@ function main() {
       rawCategory: item.rawCategory,
       sourceLine: item.sourceLine,
       imageUrl: item.imageUrl || null,
+      imageOptimized: item.imageOptimized || null,
       imageStatus: item.imageStatus || 'missing',
       imageGeneratedAt: item.imageGeneratedAt || null,
     })),
@@ -66,6 +67,7 @@ export interface PromptTemplate {
   rawCategory: string;
   sourceLine: number | null;
   imageUrl: string | null;
+  imageOptimized: Record<string, Record<string, string>> | null;
   imageStatus: string;
   imageGeneratedAt: string | null;
 }

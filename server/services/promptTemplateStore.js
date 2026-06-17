@@ -26,6 +26,7 @@ function publicTemplate(template) {
     rawCategory: template.rawCategory,
     sourceLine: template.sourceLine,
     imageUrl: template.imageUrl || null,
+    imageOptimized: template.imageOptimized || null,
     imageStatus: template.imageStatus || 'missing',
     imageGeneratedAt: template.imageGeneratedAt || null,
   };

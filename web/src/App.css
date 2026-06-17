@@ -98,6 +98,18 @@
   box-sizing: border-box;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip: rect(0, 0, 0, 0);
+}
+
 html,
 body,
 #root {
@@ -634,6 +646,8 @@ main {
   margin-top: 18px;
   padding-top: 18px;
   border-top: 1px solid var(--border);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 180px;
 }
 
 .legal-page,
@@ -794,7 +808,7 @@ main {
 .history-ad-slot {
   display: block;
   width: 100%;
-  min-height: 96px;
+  min-height: 118px;
   margin: 0 0 16px;
   padding: 10px;
   border: 1px solid color-mix(in oklab, var(--border) 86%, transparent);
@@ -812,7 +826,7 @@ main {
 }
 .history-ad-unit {
   display: block;
-  min-height: 72px;
+  min-height: 92px;
 }
 .history-ad-slot-mock {
   min-height: 118px;
@@ -1636,7 +1650,6 @@ select:focus {
 }
 .lazy-history-media {
   width: 100%;
-  min-height: 120px;
   display: grid;
   place-items: center;
   background:
@@ -1674,7 +1687,6 @@ select:focus {
   opacity: 0.78;
 }
 .lazy-history-media.is-loaded {
-  min-height: 0;
   display: block;
 }
 .lazy-history-media.is-loaded::before,
@@ -1682,6 +1694,8 @@ select:focus {
   content: none;
 }
 .lazy-history-media-content {
+  width: 100%;
+  height: 100%;
   opacity: 0;
   transform: scale(1.015);
   transition:
@@ -1692,13 +1706,13 @@ select:focus {
   opacity: 1;
   transform: scale(1);
 }
+.lazy-history-image .lazy-history-media-content {
+  object-fit: cover;
+}
 .lazy-history-video {
   aspect-ratio: 16 / 9;
   border-radius: 10px;
   background: #000;
-}
-.lazy-history-video.is-loaded {
-  aspect-ratio: auto;
 }
 @keyframes history-media-skeleton {
   0% {
@@ -1975,6 +1989,23 @@ body.is-media-preview-open .prompt-optimize-control {
 .output {
   min-height: 300px;
 }
+.history-deferred-placeholder {
+  min-height: 260px;
+  border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(
+      105deg,
+      transparent 0%,
+      transparent 34%,
+      color-mix(in oklab, var(--accent) 9%, transparent) 48%,
+      transparent 62%,
+      transparent 100%
+    ),
+    linear-gradient(135deg, color-mix(in oklab, var(--surface) 68%, transparent), color-mix(in oklab, var(--surface-warm) 54%, transparent));
+  background-size: 220% 100%, 100% 100%;
+  animation: history-media-skeleton 1.45s var(--ease-standard) infinite;
+}
 
 @media (min-width: 1280px) {
   .panel.output {
@@ -1994,6 +2025,9 @@ body.is-media-preview-open .prompt-optimize-control {
     overscroll-behavior: contain;
     padding-right: var(--space-2);
   }
+    .panel.output .history-deferred-placeholder {
+      flex: 1 1 auto;
+    }
 }
 
 /* 自定义尺寸 */

@@ -1,4 +1,4 @@
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   getTask,
   refreshTask,
@@ -93,6 +93,15 @@ function readMergedLocalHistory(category: HistoryCategory, previous: Task[]): Ta
   return mergeHistoryTasks(previous, readLocalHistory(category, 100));
 }
 
+function aspectRatioFromSize(size: string): string {
+  const match = size.match(/^(\d{2,5})x(\d{2,5})$/);
+  if (!match) return '4 / 3';
+  const width = Number(match[1]);
+  const height = Number(match[2]);
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return '4 / 3';
+  return `${width} / ${height}`;
+}
+
 function useLazyMedia<T extends HTMLElement>(src: string) {
   const ref = useRef<T | null>(null);
   const [shouldLoad, setShouldLoad] = useState(() => (
@@ -128,9 +137,18 @@ function useLazyMedia<T extends HTMLElement>(src: string) {
   return { ref, shouldLoad };
 }
 
-const LazyHistoryImage = memo(function LazyHistoryImage({ src, alt }: { src: string; alt: string }) {
+const LazyHistoryImage = memo(function LazyHistoryImage({
+  src,
+  alt,
+  aspectRatio,
+}: {
+  src: string;
+  alt: string;
+  aspectRatio: string;
+}) {
   const { ref, shouldLoad } = useLazyMedia<HTMLSpanElement>(src);
   const [loaded, setLoaded] = useState(() => historyMediaLoadedCache.has(src));
+  const style = useMemo<CSSProperties>(() => ({ aspectRatio }), [aspectRatio]);
 
   function markLoaded() {
     historyMediaRequestedCache.add(src);
@@ -141,6 +159,7 @@ const LazyHistoryImage = memo(function LazyHistoryImage({ src, alt }: { src: str
   return (
     <span
       ref={ref}
+      style={style}
       className={[
         'lazy-history-media',
         'lazy-history-image',
@@ -648,7 +667,12 @@ export function TaskHistory({ category, refreshSignal, currentPrompt = '', onPro
                               }
                               aria-label={t('preview.open')}
                             >
-                              <LazyHistoryImage key={src} src={src} alt={`result-${i}`} />
+                              <LazyHistoryImage
+                                key={src}
+                                src={src}
+                                alt={`result-${i}`}
+                                aspectRatio={aspectRatioFromSize(size)}
+                              />
                             </button>
                             <div className="gallery-actions">
                               <BlobDownloadButton

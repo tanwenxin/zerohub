@@ -16,8 +16,10 @@
     "install:all": "npm install && npm --prefix web install --legacy-peer-deps",
     "templates:normalize": "node scripts/prompt-templates/normalize-prompt-templates.js",
     "templates:images": "node scripts/prompt-templates/generate-template-images.js --missing-only",
+    "templates:thumbs": "node scripts/prompt-templates/generate-template-thumbnails.js --missing-only",
     "templates:sync:web": "node scripts/prompt-templates/sync-web-prompt-templates.js",
-    "templates:update": "npm run templates:normalize && npm run templates:sync:web"
+    "templates:update": "npm run templates:normalize && npm run templates:thumbs && npm run templates:sync:web",
+    "templates:refresh-images": "npm run templates:images && npm run templates:thumbs && npm run templates:sync:web"
   },
   "dependencies": {
     "axios": "^1.7.7",
@@ -28,6 +30,7 @@
     "multer": "^1.4.5-lts.1"
   },
   "devDependencies": {
-    "concurrently": "^9.0.1"
+    "concurrently": "^9.0.1",
+    "sharp": "^0.33.5"
   }
 }

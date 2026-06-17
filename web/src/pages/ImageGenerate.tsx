@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { PromptForm } from '../components/PromptForm';
 import { Uploader } from '../components/Uploader';
 import { PromptOptimizeButton } from '../components/PromptOptimizeButton';
 import { PromptCompleteness } from '../components/PromptCompleteness';
 import { ImageUnderstandPanel } from '../components/ImageUnderstandPanel';
 import { SubmitFeedback } from '../components/SubmitFeedback';
-import { TaskHistory } from '../components/TaskHistory';
 import { Eyebrow, SegmentedControl } from '../components/ui';
 import { useTaskQueue } from '../useTaskQueue';
 import {
@@ -27,6 +26,11 @@ import { usePreferences } from '../usePreferences';
 import type { TranslationKey } from '../i18n';
 
 const IMAGE_MODES: ImageTaskType[] = ['text2img', 'img2img', 'multi'];
+const HISTORY_BOOT_DELAY_MS = 900;
+
+const TaskHistory = lazy(() =>
+  import('../components/TaskHistory').then((module) => ({ default: module.TaskHistory }))
+);
 
 // 统一「图片生成」模块：文生图 / 图生图 / 多图合成 三种模式可切换
 const MODES: { value: ImageTaskType; labelKey: TranslationKey }[] = [
@@ -37,25 +41,19 @@ const MODES: { value: ImageTaskType; labelKey: TranslationKey }[] = [
 
 export function ImageGenerate() {
   const { t } = usePreferences();
-  const [mode, setMode] = useState<ImageTaskType>(() => {
-    const d = readImageDraft();
-    return d && IMAGE_MODES.includes(d.mode) ? d.mode : 'text2img';
-  });
-  const [prompt, setPrompt] = useState(() => readImageDraft()?.prompt ?? '');
-  const [size, setSize] = useState(() => {
-    const draftSize = readImageDraft()?.size || null;
-    return isGenerationSizeValue(draftSize) ? draftSize : readImageSizePreference();
-  });
-  const [responseFormat, setResponseFormat] = useState<ResponseFormat>(
-    () => readImageDraft()?.responseFormat ?? 'url'
-  );
+  const [mode, setMode] = useState<ImageTaskType>('text2img');
+  const [prompt, setPrompt] = useState('');
+  const [size, setSize] = useState(DEFAULT_IMAGE_SIZE);
+  const [responseFormat, setResponseFormat] = useState<ResponseFormat>('url');
   const [sizeValid, setSizeValid] = useState(true);
-  const [files, setFiles] = useState<File[]>(() => readImageDraftFiles());
-  const [urls, setUrls] = useState<string[]>(() => readImageDraft()?.urls ?? []);
+  const [files, setFiles] = useState<File[]>([]);
+  const [urls, setUrls] = useState<string[]>([]);
   const [submitFeedback, setSubmitFeedback] = useState<'idle' | 'accepted'>('idle');
   const [hiddenSubmitFailureId, setHiddenSubmitFailureId] = useState<string | null>(null);
   const [formKey, setFormKey] = useState(0); // 回填/清空时强制 PromptForm 重新初始化
   const [promptAssessKey, setPromptAssessKey] = useState(0);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const [historyReady, setHistoryReady] = useState(false);
   const feedbackTimerRef = useRef<number | null>(null);
   const promptDirtyRef = useRef(false);
 
@@ -74,14 +72,45 @@ export function ImageGenerate() {
     };
   }, []);
 
-  // 草稿自动保存：文本/参数同步；上传图片单独序列化（含 base64）
   useEffect(() => {
-    saveImageDraft({ mode, prompt, size, responseFormat, urls });
-  }, [mode, prompt, size, responseFormat, urls]);
+    const timerId = globalThis.setTimeout(() => {
+      const draft = readImageDraft();
+      if (draft) {
+        if (IMAGE_MODES.includes(draft.mode)) setMode(draft.mode);
+        setPrompt(draft.prompt || '');
+        setSize(isGenerationSizeValue(draft.size) ? draft.size : readImageSizePreference());
+        setResponseFormat(draft.responseFormat === 'b64_json' ? 'b64_json' : 'url');
+        setUrls(Array.isArray(draft.urls) ? draft.urls : []);
+        setFiles(readImageDraftFiles());
+        setFormKey((key) => key + 1);
+      } else {
+        setSize(readImageSizePreference());
+      }
+      setDraftRestored(true);
+    }, 0);
+    return () => globalThis.clearTimeout(timerId);
+  }, []);
 
   useEffect(() => {
+    const run = () => setHistoryReady(true);
+    if ('requestIdleCallback' in window) {
+      const idleId = window.requestIdleCallback(run, { timeout: HISTORY_BOOT_DELAY_MS });
+      return () => window.cancelIdleCallback(idleId);
+    }
+    const timerId = globalThis.setTimeout(run, HISTORY_BOOT_DELAY_MS);
+    return () => globalThis.clearTimeout(timerId);
+  }, []);
+
+  // 草稿自动保存：文本/参数同步；上传图片单独序列化（含 base64）
+  useEffect(() => {
+    if (!draftRestored) return;
+    saveImageDraft({ mode, prompt, size, responseFormat, urls });
+  }, [draftRestored, mode, prompt, size, responseFormat, urls]);
+
+  useEffect(() => {
+    if (!draftRestored) return;
     void saveImageDraftFiles(files);
-  }, [files]);
+  }, [draftRestored, files]);
 
   const needsImage = mode !== 'text2img';
   const minImages = mode === 'multi' ? 2 : 1;
@@ -331,12 +360,18 @@ export function ImageGenerate() {
 
       <div className="panel output">
         <h3 className="history-title">{t('task.historyTitle')}</h3>
-        <TaskHistory
-          category="image"
-          currentPrompt={prompt}
-          onPromptFill={setPrompt}
-          onFill={onHistoryFill}
-        />
+        {historyReady ? (
+          <Suspense fallback={<div className="history-deferred-placeholder" aria-hidden="true" />}>
+            <TaskHistory
+              category="image"
+              currentPrompt={prompt}
+              onPromptFill={setPrompt}
+              onFill={onHistoryFill}
+            />
+          </Suspense>
+        ) : (
+          <div className="history-deferred-placeholder" aria-hidden="true" />
+        )}
       </div>
     </div>
   );
