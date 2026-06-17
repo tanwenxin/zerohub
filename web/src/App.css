@@ -1086,6 +1086,7 @@ select:focus {
 }
 
 .generate-actions {
+  position: relative;
   margin-top: var(--space-5);
 }
 
@@ -1118,11 +1119,14 @@ select:focus {
 }
 
 .submit-feedback {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  margin-top: 10px;
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 0;
-  margin-top: 10px;
   padding: 0 10px;
   border: 1px solid transparent;
   border-radius: 10px;
@@ -1131,13 +1135,11 @@ select:focus {
   line-height: 1.45;
   opacity: 0;
   transform: translateY(-6px);
-  max-height: 0;
-  overflow: hidden;
-  transition: opacity 0.18s ease, transform 0.18s ease, max-height 0.18s ease, padding 0.18s ease, border-color 0.18s ease;
+  transition: opacity 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+  pointer-events: none;
 }
 
 .submit-feedback.show {
-  max-height: 72px;
   padding: 9px 10px;
   border-color: color-mix(in srgb, var(--ok) 42%, var(--border));
   background: color-mix(in srgb, var(--ok) 12%, transparent);
@@ -1145,6 +1147,7 @@ select:focus {
   opacity: 1;
   transform: translateY(0);
   animation: submitSlideIn 0.22s ease;
+  pointer-events: auto;
 }
 
 .submit-feedback.error.show {
@@ -1397,6 +1400,8 @@ select:focus {
   border-radius: var(--radius-lg);
   padding: var(--space-4);
   background: color-mix(in oklab, var(--surface) 46%, transparent);
+  min-height: 220px;
+  contain: layout;
 }
 .completeness-meter {
   display: grid;
