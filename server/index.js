@@ -12,6 +12,7 @@ const videosRouter = require('./routes/videos');
 const textRouter = require('./routes/text');
 const statsRouter = require('./routes/stats');
 const promptTemplatesRouter = require('./routes/promptTemplates');
+const promptOptimizerRouter = require('./routes/promptOptimizer');
 const logger = require('./services/logger');
 
 const app = express();
@@ -102,6 +103,7 @@ app.use('/api', videosRouter);
 app.use('/api', textRouter);
 app.use('/api', statsRouter);
 app.use('/api', promptTemplatesRouter);
+app.use('/api', promptOptimizerRouter);
 
 function setStaticCacheHeaders(res, filePath) {
   if (filePath.includes(`${path.sep}assets${path.sep}`)) {

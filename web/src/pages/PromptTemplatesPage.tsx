@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Head } from 'vite-react-ssg';
-import { listPromptTemplates, type PromptTemplatePagination as Pagination } from '../api/client';
+import {
+  getPromptOptimizerOptions,
+  listPromptTemplates,
+  optimizePromptForModel,
+  type PromptOptimizerOptions,
+  type PromptOptimizerProvider,
+  type PromptTemplatePagination as Pagination,
+} from '../api/client';
 import { PromptTemplateCard } from '../components/PromptTemplateCard';
 import { PromptTemplatePagination } from '../components/PromptTemplatePagination';
-import { Badge, Button, Card, Container, Eyebrow, Input, Section } from '../components/ui';
+import { Badge, Button, Card, Container, Eyebrow, Input, Section, SegmentedControl } from '../components/ui';
 import {
   PROMPT_TEMPLATE_CATEGORIES,
   PROMPT_TEMPLATES,
@@ -14,10 +21,19 @@ import {
 } from '../data/promptTemplates.generated';
 import { categoryDescription, categoryName } from '../data/promptTemplateLabels';
 import { usePreferences } from '../usePreferences';
+import {
+  addPromptOptimizerHistory,
+  clearPromptOptimizerHistory,
+  readPromptOptimizerHistory,
+  removePromptOptimizerHistory,
+  type PromptOptimizerHistoryItem,
+} from '../utils/promptOptimizerHistory';
 import './PromptTemplatesPage.css';
 
 const SITE_URL = (import.meta.env.VITE_SITE_URL || 'https://agnes-image-studio.xyz').replace(/\/+$/, '');
 const DEFAULT_PAGE_SIZE = 24;
+
+type PromptPageTab = 'optimizer' | 'library';
 
 interface ListingState {
   items: PromptTemplate[];
@@ -67,6 +83,374 @@ function staticList(categorySlug: string | undefined, page: number, pageSize: nu
   };
 }
 
+const FALLBACK_OPTIMIZER_OPTIONS: PromptOptimizerOptions = {
+  defaultProvider: 'generic',
+  providers: [
+    {
+      id: 'generic',
+      label: '通用模板',
+      description: '集合各模型共性优点的标准化提示词模板',
+      defaultVersion: 'universal',
+      versions: [
+        {
+          value: 'universal',
+          label: '通用优化',
+          sourceUrl: 'internal://prompt-optimizer/universal',
+          sourceCheckedAt: '2026-06-21',
+          sourceStatus: 'internal',
+        },
+      ],
+    },
+    {
+      id: 'jimeng',
+      label: '即梦',
+      description: '面向即梦图像生成的中文视觉提示词优化',
+      defaultVersion: '4.5',
+      versions: [
+        {
+          value: '4.0',
+          label: '即梦 4.0',
+          sourceUrl: 'https://bytedance.larkoffice.com/wiki/SWalw66Flihm1pkudaQcvWuBn3d',
+          sourceCheckedAt: '2026-06-21',
+          sourceStatus: 'pending_auth',
+        },
+        {
+          value: '4.1',
+          label: '即梦 4.1',
+          sourceUrl: 'https://bytedance.larkoffice.com/wiki/XRUCwBQyiiO2akk36E4cFsU4nGd',
+          sourceCheckedAt: '2026-06-21',
+          sourceStatus: 'pending_auth',
+        },
+        {
+          value: '4.5',
+          label: '即梦 4.5',
+          sourceUrl: 'https://bytedance.larkoffice.com/wiki/GTA7wTKRDi1SxKk4joMcftz5nfe',
+          sourceCheckedAt: '2026-06-21',
+          sourceStatus: 'pending_auth',
+        },
+      ],
+    },
+  ],
+};
+
+function providerById(options: PromptOptimizerOptions, providerId: string): PromptOptimizerProvider {
+  return options.providers.find((provider) => provider.id === providerId) || options.providers[0];
+}
+
+function localizedProviderLabel(provider: PromptOptimizerProvider, en: boolean): string {
+  if (!en) return provider.label;
+  if (provider.id === 'jimeng') return 'Jimeng';
+  if (provider.id === 'generic') return 'Universal template';
+  return provider.label;
+}
+
+function localizedVersionLabel(providerId: string, value: string, label: string, en: boolean): string {
+  if (!en) return label;
+  if (providerId === 'generic' && value === 'universal') return 'Universal optimization';
+  if (providerId === 'openai' && value === 'gpt-general') return 'GPT general';
+  if (providerId === 'jimeng') return label.replace('即梦', 'Jimeng');
+  return label;
+}
+
+function formatHistoryTime(value: number, en: boolean): string {
+  if (!value) return '';
+  return new Intl.DateTimeFormat(en ? 'en-US' : 'zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(value);
+}
+
+function compactHistoryText(value: string, max = 96): string {
+  const text = value.replace(/\s+/g, ' ').trim();
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+function PromptOptimizerPanel() {
+  const { language } = usePreferences();
+  const en = language === 'en';
+  const fallbackProvider = providerById(FALLBACK_OPTIMIZER_OPTIONS, FALLBACK_OPTIMIZER_OPTIONS.defaultProvider);
+  const [options, setOptions] = useState<PromptOptimizerOptions>(FALLBACK_OPTIMIZER_OPTIONS);
+  const [providerId, setProviderId] = useState(FALLBACK_OPTIMIZER_OPTIONS.defaultProvider);
+  const [version, setVersion] = useState(fallbackProvider.defaultVersion || fallbackProvider.versions[0]?.value || '');
+  const [input, setInput] = useState('');
+  const [result, setResult] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
+  const [history, setHistory] = useState<PromptOptimizerHistoryItem[]>([]);
+  const [activeHistoryId, setActiveHistoryId] = useState('');
+
+  const currentProvider = providerById(options, providerId);
+  const currentVersion = currentProvider.versions.find((item) => item.value === version) || currentProvider.versions[0];
+  const activeHistory = history.find((item) => item.id === activeHistoryId) || history[0] || null;
+
+  useEffect(() => {
+    let cancelled = false;
+    getPromptOptimizerOptions()
+      .then((remoteOptions) => {
+        if (cancelled || !remoteOptions.providers.length) return;
+        const defaultProvider = providerById(remoteOptions, remoteOptions.defaultProvider);
+        setOptions(remoteOptions);
+        setProviderId(defaultProvider.id);
+        setVersion(defaultProvider.defaultVersion || defaultProvider.versions[0]?.value || '');
+      })
+      .catch(() => {
+        // 后端暂不可用时保留本地兜底选项，避免 SSG 或静态预览报错。
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setHistory(readPromptOptimizerHistory()), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  function changeProvider(nextProviderId: string) {
+    const nextProvider = providerById(options, nextProviderId);
+    setProviderId(nextProvider.id);
+    setVersion(nextProvider.defaultVersion || nextProvider.versions[0]?.value || '');
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const prompt = input.trim();
+    if (!prompt || loading) {
+      setError(en ? 'Enter a prompt to optimize' : '请输入需要优化的提示词');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setCopied(false);
+    try {
+      const response = await optimizePromptForModel({
+        prompt,
+        provider: currentProvider.id,
+        version: currentVersion.value,
+      });
+      const nextResult = response.prompt.trim();
+      setResult(nextResult);
+      const item = addPromptOptimizerHistory({
+        sourcePrompt: prompt,
+        optimizedPrompt: nextResult,
+        providerId: currentProvider.id,
+        providerLabel: currentProvider.label,
+        version: currentVersion.value,
+        versionLabel: currentVersion.label,
+      });
+      setHistory(readPromptOptimizerHistory());
+      setActiveHistoryId(item.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : en ? 'Prompt optimization failed. Try again later.' : '提示词优化失败，请稍后重试');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function copyResult() {
+    if (!result.trim()) return;
+    try {
+      await navigator.clipboard.writeText(result.trim());
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setError(en ? 'Copy failed. Select the result manually.' : '复制失败，请手动选择结果文本');
+    }
+  }
+
+  async function copyText(text: string) {
+    if (!text.trim()) return;
+    try {
+      await navigator.clipboard.writeText(text.trim());
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setError(en ? 'Copy failed. Select the text manually.' : '复制失败，请手动选择文本');
+    }
+  }
+
+  function applyHistory(item: PromptOptimizerHistoryItem) {
+    setInput(item.sourcePrompt);
+    setResult(item.optimizedPrompt);
+    setProviderId(item.providerId);
+    setVersion(item.version);
+    setActiveHistoryId(item.id);
+    setError('');
+  }
+
+  function deleteHistory(id: string) {
+    removePromptOptimizerHistory(id);
+    const next = readPromptOptimizerHistory();
+    setHistory(next);
+    setActiveHistoryId((current) => (current === id ? next[0]?.id || '' : current));
+  }
+
+  function clearHistory() {
+    clearPromptOptimizerHistory();
+    setHistory([]);
+    setActiveHistoryId('');
+  }
+
+  return (
+    <Section>
+      <Container>
+        <Card className="prompt-optimizer-panel">
+          <div className="prompt-optimizer-head">
+            <div>
+              <Eyebrow>Prompt Optimizer</Eyebrow>
+              <h2>{en ? 'Prompt Optimizer' : '提示词优化器'}</h2>
+              <p>
+                {en
+                  ? 'Enter a raw prompt, choose a target model and version, then generate a prompt better suited to that model.'
+                  : '输入原始提示词，选择目标模型类型与版本，生成更适合对应模型的提示词。'}
+              </p>
+            </div>
+            <Badge>{localizedVersionLabel(currentProvider.id, currentVersion.value, currentVersion.label, en)}</Badge>
+          </div>
+
+          <form className="prompt-optimizer-form" onSubmit={submit}>
+            <label className="prompt-optimizer-field prompt-optimizer-input">
+              <span>{en ? 'Raw prompt' : '原始提示词'}</span>
+              <textarea
+                value={input}
+                rows={7}
+                placeholder={
+                  en
+                    ? 'Example: rainy street, a girl in a red trench coat, cinematic mood'
+                    : '例如：雨后街头，一个穿红色风衣的女孩，电影感'
+                }
+                onChange={(event) => setInput(event.target.value)}
+              />
+            </label>
+
+            <div className="prompt-optimizer-controls">
+              <label className="prompt-optimizer-field">
+                <span>{en ? 'Model type' : '模型类型'}</span>
+                <select value={currentProvider.id} onChange={(event) => changeProvider(event.target.value)}>
+                  {options.providers.map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {localizedProviderLabel(provider, en)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="prompt-optimizer-field">
+                <span>{en ? 'Model version' : '模型版本'}</span>
+                <select value={currentVersion.value} onChange={(event) => setVersion(event.target.value)}>
+                  {currentProvider.versions.map((item) => (
+                    <option key={item.value} value={item.value}>
+                      {localizedVersionLabel(currentProvider.id, item.value, item.label, en)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button type="submit" variant="primary" disabled={loading}>
+                {loading ? (en ? 'Optimizing…' : '优化中…') : en ? 'Optimize prompt' : '优化提示词'}
+              </Button>
+            </div>
+          </form>
+
+          <div className="prompt-optimizer-result" aria-live="polite">
+            <div className="prompt-optimizer-result-head">
+              <span>{en ? 'Optimized result' : '优化结果'}</span>
+              <Button type="button" size="sm" variant="ghost" disabled={!result.trim()} onClick={() => void copyResult()}>
+                {copied ? (en ? 'Copied' : '已复制') : en ? 'Copy' : '复制'}
+              </Button>
+            </div>
+            {result ? (
+              <p>{result}</p>
+            ) : (
+              <p className="prompt-optimizer-empty">{en ? 'The optimized prompt will appear here.' : '优化后的提示词会显示在这里。'}</p>
+            )}
+            {error ? <p className="prompt-optimizer-error">{error}</p> : null}
+          </div>
+
+          <div className="prompt-optimizer-history">
+            <div className="prompt-optimizer-history-head">
+              <div>
+                <h3>{en ? 'Local history' : '本地历史'}</h3>
+                <p>
+                  {en
+                    ? 'Compare previous optimizations and restore useful prompts.'
+                    : '记录此前优化过的提示词，方便对比配置、回填和删除。'}
+                </p>
+              </div>
+              <Button type="button" size="sm" variant="ghost" disabled={!history.length} onClick={clearHistory}>
+                {en ? 'Clear' : '清空'}
+              </Button>
+            </div>
+
+            {history.length ? (
+              <div className="prompt-optimizer-history-grid">
+                <div className="prompt-optimizer-history-list" aria-label={en ? 'Prompt optimization history' : '提示词优化历史'}>
+                  {history.map((item) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      className={item.id === activeHistory?.id ? 'is-active' : ''}
+                      onClick={() => setActiveHistoryId(item.id)}
+                    >
+                      <span>{compactHistoryText(item.sourcePrompt)}</span>
+                      <small>
+                        {localizedProviderLabel({ id: item.providerId, label: item.providerLabel, description: '', defaultVersion: '', versions: [] }, en)}
+                        {' · '}
+                        {localizedVersionLabel(item.providerId, item.version, item.versionLabel, en)}
+                        {' · '}
+                        {formatHistoryTime(item.createdAt, en)}
+                      </small>
+                    </button>
+                  ))}
+                </div>
+
+                {activeHistory && (
+                  <div className="prompt-optimizer-history-detail">
+                    <div className="prompt-optimizer-history-meta">
+                      <Badge>
+                        {localizedProviderLabel({ id: activeHistory.providerId, label: activeHistory.providerLabel, description: '', defaultVersion: '', versions: [] }, en)}
+                        {' · '}
+                        {localizedVersionLabel(activeHistory.providerId, activeHistory.version, activeHistory.versionLabel, en)}
+                      </Badge>
+                      <span>{formatHistoryTime(activeHistory.createdAt, en)}</span>
+                    </div>
+                    <div className="prompt-optimizer-compare">
+                      <section>
+                        <h4>{en ? 'Original' : '原始提示词'}</h4>
+                        <p>{activeHistory.sourcePrompt}</p>
+                      </section>
+                      <section>
+                        <h4>{en ? 'Optimized' : '优化结果'}</h4>
+                        <p>{activeHistory.optimizedPrompt}</p>
+                      </section>
+                    </div>
+                    <div className="prompt-optimizer-history-actions">
+                      <Button type="button" size="sm" onClick={() => applyHistory(activeHistory)}>
+                        {en ? 'Restore' : '回填'}
+                      </Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => void copyText(activeHistory.optimizedPrompt)}>
+                        {copied ? (en ? 'Copied' : '已复制') : en ? 'Copy result' : '复制结果'}
+                      </Button>
+                      <Button type="button" size="sm" variant="danger" onClick={() => deleteHistory(activeHistory.id)}>
+                        {en ? 'Delete' : '删除'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="prompt-optimizer-history-empty">
+                {en ? 'No local prompt optimization history yet.' : '暂无本地优化历史。'}
+              </p>
+            )}
+          </div>
+        </Card>
+      </Container>
+    </Section>
+  );
+}
+
 function PromptTemplatesListing({ categorySlug }: { categorySlug?: string }) {
   const { language } = usePreferences();
   const en = language === 'en';
@@ -84,8 +468,11 @@ function PromptTemplatesListing({ categorySlug }: { categorySlug?: string }) {
   const [searchValue, setSearchValue] = useState(query);
   const [state, setState] = useState<ListingState>(() => staticList(categorySlug, page, pageSize, query));
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<PromptPageTab>(categorySlug ? 'library' : 'optimizer');
   const resultsRef = useRef<HTMLDivElement | null>(null);
   const shouldScrollToResultsRef = useRef(false);
+
+  const showLibrary = categorySlug || activeTab === 'library';
 
   useEffect(() => {
     let cancelled = false;
@@ -279,53 +666,97 @@ function PromptTemplatesListing({ categorySlug }: { categorySlug?: string }) {
         {breadcrumbData ? <script type="application/ld+json">{JSON.stringify(breadcrumbData)}</script> : null}
       </Head>
 
-      <Section>
-        <Container className="prompt-template-hero">
-          <div>
-            <Eyebrow>{en ? 'Prompt Library' : '提示词库'}</Eyebrow>
-            <h1>{category ? (en ? `${currentCategoryName} Prompts` : `${currentCategoryName}提示词`) : (en ? 'AI Prompt Library' : 'AI 提示词库')}</h1>
-            <p className="ui-lead">{description}</p>
-          </div>
-          <Card className="prompt-template-stat" as="aside">
-            <strong>{state.pagination.total}</strong>
-            <span>{category ? (en ? 'Current category' : '当前分类提示词') : (en ? 'Reusable prompts' : '可复用提示词')}</span>
-          </Card>
-        </Container>
-      </Section>
-
-      <Section>
-        <Container className="prompt-template-toolbar">
-          <form className="prompt-template-search" onSubmit={submitSearch}>
-            <Input
-              value={searchValue}
-              placeholder={en ? 'Search title, category, or prompt…' : '搜索标题、分类或提示词内容…'}
-              aria-label={en ? 'Search prompts' : '搜索提示词'}
-              onChange={(event) => setSearchValue(event.target.value)}
+      {!categorySlug && (
+        <Section>
+          <Container className="prompt-feature-switch">
+            <div>
+              <Eyebrow>{en ? 'Prompt tools' : '提示词工具'}</Eyebrow>
+              <h1>{en ? 'Prompt workspace' : '提示词工作台'}</h1>
+            </div>
+            <SegmentedControl<PromptPageTab>
+              value={activeTab}
+              onChange={setActiveTab}
+              ariaLabel={en ? 'Prompt page sections' : '提示词页面功能切换'}
+              options={[
+                { value: 'optimizer', label: en ? 'Prompt Optimizer' : '提示词优化器' },
+                { value: 'library', label: en ? 'AI Prompt Library' : 'AI 提示词库' },
+              ]}
             />
-            <Button type="submit" variant="primary">
-              {en ? 'Search' : '搜索'}
-            </Button>
-          </form>
-          <div className="prompt-template-categories" aria-label={en ? 'Prompt categories' : '提示词分类'}>
-            <Link className={!categorySlug ? 'is-active' : ''} to="/prompt-templates">
-              {en ? 'All' : '全部'}
-            </Link>
-            {state.categories.map((item) => (
-              <Link
-                key={item.slug}
-                className={item.slug === categorySlug ? 'is-active' : ''}
-                to={`/prompt-templates/${item.slug}`}
-              >
-                {categoryName(item.slug, item.name, language)}
-              </Link>
-            ))}
-          </div>
-        </Container>
-      </Section>
+          </Container>
+        </Section>
+      )}
 
-      <Section>
-        <Container>
-          <div ref={resultsRef} className="prompt-template-results-head">
+      {!categorySlug && activeTab === 'optimizer' ? <PromptOptimizerPanel /> : null}
+
+      {showLibrary && (
+        <>
+          <Section>
+            <Container className="prompt-template-hero">
+              <div>
+                <Eyebrow>{en ? 'AI Prompt Library' : 'AI 提示词库'}</Eyebrow>
+                <h1>
+                  {category
+                    ? en
+                      ? `${currentCategoryName} Prompts`
+                      : `${currentCategoryName}提示词`
+                    : en
+                      ? 'AI Prompt Library'
+                      : 'AI 提示词库'}
+                </h1>
+                <p className="ui-lead">{description}</p>
+              </div>
+              <Card className="prompt-template-stat" as="aside">
+                <strong>{state.pagination.total}</strong>
+                <span>{category ? (en ? 'Current category' : '当前分类提示词') : (en ? 'Reusable prompts' : '可复用提示词')}</span>
+              </Card>
+            </Container>
+          </Section>
+
+          <Section>
+            <Container className="prompt-template-toolbar">
+              <div className="prompt-library-heading">
+                <Eyebrow>{en ? 'Browse prompts' : '浏览提示词'}</Eyebrow>
+                <h2>
+                  {category
+                    ? en
+                      ? `${currentCategoryName} Prompts`
+                      : `${currentCategoryName}提示词`
+                    : en
+                      ? 'Reusable prompt templates'
+                      : '可复用提示词模板'}
+                </h2>
+              </div>
+              <form className="prompt-template-search" onSubmit={submitSearch}>
+                <Input
+                  value={searchValue}
+                  placeholder={en ? 'Search title, category, or prompt…' : '搜索标题、分类或提示词内容…'}
+                  aria-label={en ? 'Search prompts' : '搜索提示词'}
+                  onChange={(event) => setSearchValue(event.target.value)}
+                />
+                <Button type="submit" variant="primary">
+                  {en ? 'Search' : '搜索'}
+                </Button>
+              </form>
+              <div className="prompt-template-categories" aria-label={en ? 'Prompt categories' : '提示词分类'}>
+                <Link className={!categorySlug ? 'is-active' : ''} to="/prompt-templates">
+                  {en ? 'All' : '全部'}
+                </Link>
+                {state.categories.map((item) => (
+                  <Link
+                    key={item.slug}
+                    className={item.slug === categorySlug ? 'is-active' : ''}
+                    to={`/prompt-templates/${item.slug}`}
+                  >
+                    {categoryName(item.slug, item.name, language)}
+                  </Link>
+                ))}
+              </div>
+            </Container>
+          </Section>
+
+          <Section>
+            <Container>
+              <div ref={resultsRef} className="prompt-template-results-head">
             <div>
               <Badge>{en ? `${state.pagination.total} total` : `共 ${state.pagination.total} 条`}</Badge>
               {error ? <span className="prompt-template-error">{error}</span> : null}
@@ -350,8 +781,10 @@ function PromptTemplatesListing({ categorySlug }: { categorySlug?: string }) {
             pagination={state.pagination}
             onPageChange={changePage}
           />
-        </Container>
-      </Section>
+            </Container>
+          </Section>
+        </>
+      )}
     </div>
   );
 }

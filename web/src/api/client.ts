@@ -333,6 +333,47 @@ export async function understandImage(
   return res.json();
 }
 
+export interface PromptOptimizerVersion {
+  value: string;
+  label: string;
+  sourceUrl: string;
+  sourceCheckedAt: string;
+  sourceStatus: string;
+}
+
+export interface PromptOptimizerProvider {
+  id: string;
+  label: string;
+  description: string;
+  defaultVersion: string;
+  versions: PromptOptimizerVersion[];
+}
+
+export interface PromptOptimizerOptions {
+  defaultProvider: string;
+  providers: PromptOptimizerProvider[];
+}
+
+export async function getPromptOptimizerOptions(): Promise<PromptOptimizerOptions> {
+  const res = await fetch('/api/prompt-optimizer/options');
+  if (!res.ok) await throwResponseError(res);
+  return res.json();
+}
+
+export async function optimizePromptForModel(params: {
+  prompt: string;
+  provider: string;
+  version: string;
+}): Promise<{ prompt: string; provider: string; version: string; fallback?: boolean }> {
+  const res = await fetch('/api/prompt-optimizer/optimize', {
+    method: 'POST',
+    headers: sessionHeaders({ 'Content-Type': 'application/json' }),
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) await throwResponseError(res);
+  return res.json();
+}
+
 /** 将本地文件读取为 Data URI（base64），供图片理解传给后端 */
 export function fileToDataUri(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
